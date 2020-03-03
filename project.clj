@@ -5,8 +5,11 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.suskalo/discljord "0.2.5"]
-                 [com.taoensso/carmine "2.19.1"]]
+                 [com.taoensso/carmine "2.19.1"]
+                 [clj-http "3.10.0"]
+                 [yogthos/config "1.1.7"]]
+  ;; configuration will be read from the dev-config.edn file
+  :jvm-opts ["-Dconfig=secrets.edn"]
   :main ethot.core
   :aot [ethot.core]
   :repl-options {:init-ns ethot.core})
-

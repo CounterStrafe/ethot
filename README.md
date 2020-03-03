@@ -1,10 +1,16 @@
 # ethot
 
-A Clojure library designed to ... well, that part is up to you.
+A Discord bot to fill the void between Toornament and Ebot
 
 ## Usage
 
-FIXME
+### Create Your config
+Create a `secrets.edn` file in the project root with your Toornament API key:
+```clojure
+{
+  :toornament-api-key "<insert-toornament-api-key-here>"
+}
+```
 
 ## License
 
