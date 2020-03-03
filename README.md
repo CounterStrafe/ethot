@@ -4,7 +4,7 @@ A Discord bot to fill the void between Toornament and Ebot
 
 ## Usage
 
-### Create Your config
+### Add Your Toornament API Key
 Create a `secrets.edn` file in the project root with your Toornament API key:
 ```clojure
 {
