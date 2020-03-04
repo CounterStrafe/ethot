@@ -18,9 +18,8 @@
 (def ebot-url (:ebot-url env))
 
 (defn ebot-login []
-  (let [
-    ebot-login-url (str ebot-url "/admin.php/guard/login")
-    post-data {}])
+  (let [ebot-login-url (str ebot-url "/admin.php/guard/login")
+        post-data {}])
   (hclient/post ebot-login-url))
 
 (defn -main
