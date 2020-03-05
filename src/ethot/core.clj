@@ -6,7 +6,9 @@
             [clojure.string :as str]
             [clj-http.client :as hclient]
             [clj-http.conn-mgr :as conn-mgr]
-            [config.core :refer [env]])
+            [config.core :refer [env]]
+            [hickory.select :as s])
+  (:use [hickory.core])
   (:gen-class))
 
 (def state (atom {}))
@@ -17,11 +19,17 @@
 (def ebot-admin-pass (:ebot-admin-pass env))
 (def ebot-url (:ebot-url env))
 
-(defn ebot-login []
+(defn ebot-login
+  []
   (let [ebot-login-url (str ebot-url "/admin.php/guard/login")
-        post-data {}])
-  (hclient/post ebot-login-url))
+        ebot-login-htree (->
+          ; Don't throw exceptions because this page will return a 401
+          (hclient/get ebot-login-url {:connection-manager ebot-cm :throw-exceptions false})
+          :body parse as-hickory)]
+          (-> (s/select (s/id :signin__csrf_token) ebot-login-htree)
+              first :attrs :value
+          )))
 
 (defn -main
   [& args]
-  (println (str (hclient/get "http://www.google.com" {:connection-manager ebot-cm}))))
+  (println (ebot-login)))

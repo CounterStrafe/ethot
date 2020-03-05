@@ -7,6 +7,7 @@
                  [org.suskalo/discljord "0.2.5"]
                  [com.taoensso/carmine "2.19.1"]
                  [clj-http "3.10.0"]
+                 [hickory "0.7.1"]
                  [yogthos/config "1.1.7"]]
   ;; configuration will be read from the dev-config.edn file
   :jvm-opts ["-Dconfig=secrets.edn"]
