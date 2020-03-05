@@ -22,13 +22,11 @@
 (defn ebot-login
   []
   (let [ebot-login-url (str ebot-url "/admin.php/guard/login")
-        ebot-login-htree (->
-          ; Don't throw exceptions because this page will return a 401
-          (hclient/get ebot-login-url {:connection-manager ebot-cm :throw-exceptions false})
-          :body parse as-hickory)]
-          (-> (s/select (s/id :signin__csrf_token) ebot-login-htree)
-              first :attrs :value
-          )))
+        ; Don't throw exceptions because this page will return a 401
+        ebot-login-page-resp (hclient/get ebot-login-url {:connection-manager ebot-cm :throw-exceptions false})
+        ebot-login-htree (as-hickory (parse (:body ebot-login-page-resp)))]
+    (-> (s/select (s/id :signin__csrf_token) ebot-login-htree)
+        first :attrs :value)))
 
 (defn -main
   [& args]
