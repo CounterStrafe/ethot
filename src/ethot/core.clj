@@ -7,8 +7,8 @@
             [clj-http.client :as hclient]
             [clj-http.conn-mgr :as conn-mgr]
             [config.core :refer [env]]
+            [hickory.core :refer [as-hickory parse]]
             [hickory.select :as s])
-  (:use [hickory.core])
   (:gen-class))
 
 (def state (atom {}))
