@@ -3,6 +3,7 @@
             [discljord.messaging :as dmess]
             [discljord.events :as devent]
             [clojure.core.async :as async]
+            [clojure.data.json :as json]
             [clojure.string :as str]
             [clj-http.client :as hclient]
             [clj-http.conn-mgr :as conn-mgr]
@@ -23,20 +24,27 @@
 (def toornament-client-secret (:toornament-client-secret env))
 (def toornament-url "https://api.toornament.com")
 
+(defn process-toornament-response
+  [resp]
+  (json/read-str (:body resp)))
+
 (defn toornament-oauth
   [scope]
   (let [url (str toornament-url "/oauth/v2/token")]
-    (get (:body (hclient/post url {:form-params {:grant_type "client_credentials"
-                                                 :client_id toornament-client-id
-                                                 :client_secret toornament-client-secret
-                                                 :scope (str "organizer:" scope)}})
-      "access_token"))))
+    (get (process-toornament-response
+      (hclient/post url {:form-params {:grant_type "client_credentials"
+                                       :client_id toornament-client-id
+                                       :client_secret toornament-client-secret
+                                       :scope (str "organizer:" scope)}}))
+      "access_token")))
 
 (defn toornament-tournaments
   []
   (let [url (str toornament-url "/organizer/v2/tournaments")]
-    (hclient/get url {:headers {:X-Api-Key toornament-api-key
-                                :Authorization (toornament-oauth "view")}})))
+    (process-toornament-response
+      (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                  :Authorization (toornament-oauth "view")
+                                  :Range "tournaments=0-49"}}))))
 
 (defn ebot-login
   []
@@ -45,15 +53,18 @@
         get-args {:connection-manager ebot-cm :throw-exceptions false}
         get-resp (hclient/get url get-args)
         htree (as-hickory (parse (:body get-resp)))
-        csrf (-> (s/select (s/id :signin__csrf_token) htree)
+        csrf (-> (s/id :signin__csrf_token)
+                 (s/select htree)
                  first :attrs :value)
-        post-args (assoc get-args :cookies (:cookies get-resp) :form-params {
-          "signin[username]" ebot-admin-user
-          "signin[password]" ebot-admin-pass
-          "signin[_csrf_token]" csrf})]
+        post-args (assoc get-args :cookies (:cookies get-resp)
+                                  :form-params
+                                    {"signin[username]" ebot-admin-user
+                                     "signin[password]" ebot-admin-pass
+                                     "signin[_csrf_token]" csrf})]
     (hclient/post url post-args)))
 
 (defn -main
   [& args]
   (let [cookies (:cookies (ebot-login))]
-    (println (hclient/get (str ebot-url "/admin.php/guard/login") {:connection-manager ebot-cm :cookies cookies}))))
+    (println (hclient/get (str ebot-url "/admin.php/guard/login") {:connection-manager ebot-cm :cookies cookies})))
+  (println (toornament-tournaments)))
