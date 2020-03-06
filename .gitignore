@@ -5,6 +5,7 @@ profiles.clj
 pom.xml
 pom.xml.asc
 secrets.edn
+test.html
 *.jar
 *.class
 /.lein-*

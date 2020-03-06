@@ -4,11 +4,13 @@ A Discord bot to fill the void between Toornament and Ebot
 
 ## Usage
 
-### Add Your Toornament API Key
-Copy `secrets-copy.edn` to `secrets.edn` in the project root and add your Toornament API key:
+### Add Your Secrets
+Copy `secrets-copy.edn` to `secrets.edn` in the project root and add your Toornament
+API key and eBot credentials:
 ```clojure
 {
   :toornament-api-key "<insert-toornament-api-key-here>"
+  ...
 }
 ```
 
