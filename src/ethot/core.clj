@@ -18,6 +18,25 @@
 (def ebot-admin-user (:ebot-admin-user env))
 (def ebot-admin-pass (:ebot-admin-pass env))
 (def ebot-url (:ebot-url env))
+(def toornament-api-key (:toornament-api-key env))
+(def toornament-client-id (:toornament-client-id env))
+(def toornament-client-secret (:toornament-client-secret env))
+(def toornament-url "https://api.toornament.com")
+
+(defn toornament-oauth
+  [scope]
+  (let [url (str toornament-url "/oauth/v2/token")]
+    (get (:body (hclient/post url {:form-params {:grant_type "client_credentials"
+                                                 :client_id toornament-client-id
+                                                 :client_secret toornament-client-secret
+                                                 :scope (str "organizer:" scope)}})
+      "access_token"))))
+
+(defn toornament-tournaments
+  []
+  (let [url (str toornament-url "/organizer/v2/tournaments")]
+    (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                :Authorization (toornament-oauth "view")}})))
 
 (defn ebot-login
   []
