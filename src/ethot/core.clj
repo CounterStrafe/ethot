@@ -46,6 +46,10 @@
                                   :Authorization (toornament-oauth "view")
                                   :Range "tournaments=0-49"}}))))
 
+(defn start-tournament
+  [name]
+  (some #(when (= (get % "name") name) %) (toornament-tournaments)))
+
 (defn ebot-login
   []
   (let [url (str ebot-url "/admin.php/guard/login")
@@ -67,4 +71,4 @@
   [& args]
   (let [cookies (:cookies (ebot-login))]
     (println (hclient/get (str ebot-url "/admin.php/guard/login") {:connection-manager ebot-cm :cookies cookies})))
-  (println (toornament-tournaments)))
+  (println (start-tournament "Test")))
