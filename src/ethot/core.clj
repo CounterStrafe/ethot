@@ -32,10 +32,10 @@
   [scope]
   (let [url (str toornament-url "/oauth/v2/token")]
     (get (process-toornament-response
-      (hclient/post url {:form-params {:grant_type "client_credentials"
-                                       :client_id toornament-client-id
-                                       :client_secret toornament-client-secret
-                                       :scope (str "organizer:" scope)}}))
+           (hclient/post url {:form-params {:grant_type "client_credentials"
+                                            :client_id toornament-client-id
+                                            :client_secret toornament-client-secret
+                                            :scope (str "organizer:" scope)}}))
       "access_token")))
 
 (defn toornament-tournaments
