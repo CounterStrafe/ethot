@@ -1,10 +1,18 @@
 # ethot
 
-A Clojure library designed to ... well, that part is up to you.
+A Discord bot to fill the void between Toornament and Ebot
 
 ## Usage
 
-FIXME
+### Add Your Secrets
+Copy `secrets-copy.edn` to `secrets.edn` in the project root and add your eBot
+and Toornament credentials:
+```clojure
+{
+  :ebot-admin-user <insert-ebot-admin-user-here>"
+  ...
+}
+```
 
 ## License
 
