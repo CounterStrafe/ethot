@@ -9,7 +9,7 @@ Copy `secrets-copy.edn` to `secrets.edn` in the project root and add your eBot
 and Toornament credentials:
 ```clojure
 {
-  :ebot-admin-user <insert-ebot-admin-user-here>"
+  :ebot-admin-user "<insert-ebot-admin-user-here>"
   ...
 }
 ```
