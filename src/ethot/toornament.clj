@@ -32,6 +32,13 @@
                                   :Authorization (oauth "view")
                                   :Range "tournaments=0-49"}}))))
 
+(defn stages
+  [tournament-id]
+  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/stages")]
+    (process-response
+      (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                  :Authorization (oauth "result")}}))))
+
 (defn get-tournament
   [name]
   (some #(when (= (get % "name") name) %) (tournaments)))

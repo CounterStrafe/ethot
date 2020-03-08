@@ -22,7 +22,13 @@
     (println tournament)
 
     (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-    (println ";              Step 2: Log into eBot Admin Page              ;")
+    (println ";     Step 2: Get the Tournament Stages from Toornament      ;")
+    (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
+
+    (println (toornament/stages (get tournament "id")))
+
+    (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
+    (println ";              Step 3: Log into eBot Admin Page              ;")
     (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
 
     (println (hclient/get (str ebot/ebot-url "/admin.php/guard/login") {:connection-manager ebot/ebot-cm :cookies ebot-cookies}))))
