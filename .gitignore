@@ -12,4 +12,3 @@ test.html
 /.nrepl-port
 .hgignore
 .hg/
-secrets.edn
