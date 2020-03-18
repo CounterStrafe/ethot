@@ -32,6 +32,10 @@
                                   :Authorization (oauth "view")
                                   :Range "tournaments=0-49"}}))))
 
+(defn get-tournament
+  [name]
+  (some #(when (= (get % "name") name) %) (tournaments)))
+
 (defn stages
   [tournament-id]
   (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/stages")]
@@ -54,6 +58,10 @@
                 (get-in % ["opponents" 1 "participant"]))
           (matches tournament-id)))
 
-(defn get-tournament
-  [name]
-  (some #(when (= (get % "name") name) %) (tournaments)))
+(defn games
+  [tournament-id match-id]
+  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/matches/" match-id "/games")]
+    (process-response
+      (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                  :Authorization (oauth "result")
+                                  :Range "games=0-49"}}))))

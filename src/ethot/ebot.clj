@@ -7,25 +7,47 @@
             [hickory.select :as s])
   (:gen-class))
 
-(def ebot-cm (conn-mgr/make-reusable-conn-manager {}))
+(def state (atom {:cookies {}}))
 
-(def ebot-admin-user (:ebot-admin-user env))
-(def ebot-admin-pass (:ebot-admin-pass env))
-(def ebot-url (:ebot-url env))
+(def cm (conn-mgr/make-reusable-conn-manager {}))
 
-(defn ebot-login
+(def admin-user (:ebot-admin-user env))
+(def admin-pass (:ebot-admin-pass env))
+(def base-url (:ebot-base-url env))
+
+(defn process-response
+  [resp]
+  (if (contains? resp :cookies) (swap! state assoc :cookies (:cookies resp)))
+  resp)
+
+(defn get-admin-page
   []
-  (let [url (str ebot-url "/admin.php/guard/login")
+  (let [url (str base-url "/admin.php/")]
+    ; Don't throw exceptions because this page will return a 401
+    (process-response (hclient/get url {:connection-manager cm
+                                        :throw-exceptions false
+                                        :cookies (:cookies @state)}))))
+
+(defn login
+  []
+  (let [url (str base-url "/admin.php/guard/login")
         ; Don't throw exceptions because this page will return a 401
-        get-args {:connection-manager ebot-cm :throw-exceptions false}
-        get-resp (hclient/get url get-args)
+        get-args {:connection-manager cm :throw-exceptions false}
+        get-resp (get-admin-page)
         htree (as-hickory (parse (:body get-resp)))
         csrf (-> (s/id :signin__csrf_token)
                  (s/select htree)
                  first :attrs :value)
-        post-args (assoc get-args :cookies (:cookies get-resp)
+        post-args (assoc get-args :cookies (:cookies @state)
                                   :form-params
-                                    {"signin[username]" ebot-admin-user
-                                     "signin[password]" ebot-admin-pass
+                                    {"signin[username]" admin-user
+                                     "signin[password]" admin-pass
                                      "signin[_csrf_token]" csrf})]
-    (hclient/post url post-args)))
+    (process-response (hclient/post url post-args))))
+
+(defn import-game
+  [tournament-id match-id game-id]
+  (let [import-url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-id)]
+    (process-response (hclient/post import-url {:connection-manager cm
+                                                :throw-exceptions false
+                                                :cookies (:cookies @state)}))))
