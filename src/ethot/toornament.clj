@@ -39,6 +39,21 @@
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "result")}}))))
 
+(defn matches
+  [tournament-id]
+  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/matches")]
+    (process-response
+      (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                  :Authorization (oauth "result")
+                                  :Range "matches=0-99"}}))))
+
+(defn importable-matches
+  [tournament-id]
+  (filter #(and (= (get % "status") "pending")
+                (get-in % ["opponents" 0 "participant"])
+                (get-in % ["opponents" 1 "participant"]))
+          (matches tournament-id)))
+
 (defn get-tournament
   [name]
   (some #(when (= (get % "name") name) %) (tournaments)))
