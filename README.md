@@ -1,6 +1,6 @@
 # ethot
 
-A Discord bot to fill the void between Toornament and Ebot
+A Discord bot to fill the void between Toornament and eBot
 
 ## Usage
 
