@@ -6,11 +6,14 @@
             [clojure.pprint :as pp]
             [clojure.string :as str]
             [clj-http.client :as hclient]
+            [config.core :refer [env]]
             [ethot.ebot :as ebot]
             [ethot.toornament :as toornament])
   (:gen-class))
 
 (def state (atom {}))
+
+(def discord-token (:discord-token env))
 
 (defn start-tournament
   [name]
@@ -53,6 +56,27 @@
   (def game-id (get game "number"))
   (pp/pprint (ebot/import-game tournament-id match-id game-id)))
 
+(defmulti handle-event
+  (fn [event-type event-data]
+    (when (and
+           (not (:bot (:author event-data)))
+           (= event-type :message-create))
+      (first (str/split (:content event-data) #" ")))))
+
+(defmethod handle-event "!start-tournament"
+  [event-type {:keys [content]}]
+  (let [tournament-name (second (str/split content #"!start-tournament "))]
+    (start-tournament tournament-name)))
+
 (defn -main
   [& args]
-  (start-tournament "Test"))
+  (let [event-ch (async/chan 100)
+        connection-ch (dconn/connect-bot! discord-token event-ch)
+        messaging-ch (dmess/start-connection! discord-token)
+        init-state {:connection connection-ch
+                    :event event-ch
+                    :messaging messaging-ch}]
+    (reset! state init-state)
+    (devent/message-pump! event-ch handle-event)
+    (dmess/stop-connection! messaging-ch)
+    (dconn/disconnect-bot! connection-ch)))
