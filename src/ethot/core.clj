@@ -63,6 +63,9 @@
            (= event-type :message-create))
       (first (str/split (:content event-data) #" ")))))
 
+(defmethod handle-event :default
+  [event-type event-data])
+
 (defmethod handle-event "!start-tournament"
   [event-type {:keys [content]}]
   (let [tournament-name (second (str/split content #"!start-tournament "))]
