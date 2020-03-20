@@ -9,6 +9,7 @@ Copy `secrets-copy.edn` to `secrets.edn` in the project root and add your
 Discord, eBot, and Toornament credentials:
 ```clojure
 {
+  ...
   :discord-token "<insert-discord-bot-token-here>"
   ...
 }

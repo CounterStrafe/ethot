@@ -13,7 +13,15 @@
 
 (def state (atom {}))
 
+(def discord-admin-channel-id (:discord-admin-channel-id env))
+(def discord-announcements-channel-id (:discord-announcements-channel-id env))
 (def discord-token (:discord-token env))
+
+(defn notify-discord
+  ;TODO take assigned server as argument
+  [team1 team2]
+  (dmess/create-message! (:messaging @state) discord-announcements-channel-id
+                         :content (str team1 " vs " team2 " is now ready!")))
 
 (defn start-tournament
   [name]
@@ -54,12 +62,25 @@
 
   (def game (first games))
   (def game-id (get game "number"))
-  (pp/pprint (ebot/import-game tournament-id match-id game-id)))
+  (pp/pprint (ebot/import-game tournament-id match-id game-id))
+
+  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
+  (println ";            Step 5: Assign the Game to a Server             ;")
+  (println ";               TODO: Needs to be Implemented                ;")
+  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n")
+
+  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
+  (println ";                   Step 6: Notify Discord                   ;")
+  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
+
+  (notify-discord (get-in match ["opponents" 0 "participant" "name"])
+                  (get-in match ["opponents" 1 "participant" "name"])))
 
 (defmulti handle-event
   (fn [event-type event-data]
     (when (and
            (not (:bot (:author event-data)))
+           (= (:channel-id event-data) discord-admin-channel-id)
            (= event-type :message-create))
       (first (str/split (:content event-data) #" ")))))
 
@@ -67,7 +88,7 @@
   [event-type event-data])
 
 (defmethod handle-event "!start-tournament"
-  [event-type {:keys [content]}]
+  [event-type {:keys [content channel-id]}]
   (let [tournament-name (second (str/split content #"!start-tournament "))]
     (start-tournament tournament-name)))
 
