@@ -15,7 +15,6 @@
 
 (def discord-admin-channel-id (:discord-admin-channel-id env))
 (def discord-announcements-channel-id (:discord-announcements-channel-id env))
-(def discord-guild-id (:discord-guild-id env))
 ; TODO: Remove once we figure out how we're getting user-ids
 (def discord-test-user-ids (:discord-test-user-ids env))
 (def discord-token (:discord-token env))
