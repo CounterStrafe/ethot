@@ -65,3 +65,10 @@
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "result")
                                   :Range "games=0-49"}}))))
+
+(defn participant
+  [tournament-id participant-id]
+  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/participants/" participant-id)]
+    (process-response
+      (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                  :Authorization (oauth "participant")}}))))
