@@ -15,13 +15,34 @@
 
 (def discord-admin-channel-id (:discord-admin-channel-id env))
 (def discord-announcements-channel-id (:discord-announcements-channel-id env))
+; TODO: Remove once we figure out how we're getting user-ids
+(def discord-test-user-ids (:discord-test-user-ids env))
 (def discord-token (:discord-token env))
 
+(defn format-discord-mentions
+  [discord-ids]
+  (str/join " " (map #(str "<@" % ">") discord-ids)))
+
 (defn notify-discord
-  ;TODO take assigned server as argument
-  [team1 team2]
-  (dmess/create-message! (:messaging @state) discord-announcements-channel-id
-                         :content (str team1 " vs " team2 " is now ready!")))
+  [tournament-id team1-id team2-id server-ip server-pass]
+  (let [team1 (toornament/participant tournament-id team1-id)
+        team2 (toornament/participant tournament-id team2-id)
+        team1-name (get team1 "name")
+        team2-name (get team2 "name")
+        ; Not used now but we will need it when trying to determine who to send
+        ; the DM's to.
+        discord-usernames (map #(get-in % ["custom_fields" "discord_username"])
+                               (concat (get team1 "lineup") (get team2 "lineup")))]
+    (dmess/create-message! (:messaging @state) discord-announcements-channel-id
+                           :content (str team1-name " vs " team2-name " is now ready!"
+                                         "\n" (format-discord-mentions discord-test-user-ids)
+                                         "\n" "Check your DM's for server credentials."))
+    (doseq [discord-id discord-test-user-ids]
+      (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
+        (dmess/create-message! (:messaging @state) channel-id
+                               :content (str team1-name " vs " team2-name " is now ready!"
+                                             "\n" "Server: " server-ip
+                                             "\n" "Password: " server-pass))))))
 
 (defn start-tournament
   [name]
@@ -73,8 +94,10 @@
   (println ";                   Step 6: Notify Discord                   ;")
   (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
 
-  (notify-discord (get-in match ["opponents" 0 "participant" "name"])
-                  (get-in match ["opponents" 1 "participant" "name"])))
+  (notify-discord tournament-id
+                  (get-in match ["opponents" 0 "participant" "id"])
+                  (get-in match ["opponents" 1 "participant" "id"])
+                  "SERVER-IP" "SERVER-PASS")) ;TODO get from Step 5
 
 (defmulti handle-event
   (fn [event-type event-data]
