@@ -19,6 +19,10 @@
 (def discord-test-user-ids (:discord-test-user-ids env))
 (def discord-token (:discord-token env))
 
+(defn format-discord-mentions
+  [discord-ids]
+  (str/join " " (map #(str "<@" % ">") discord-ids)))
+
 (defn notify-discord
   [tournament-id team1-id team2-id server-ip server-pass]
   (let [team1 (toornament/participant tournament-id team1-id)
@@ -31,6 +35,7 @@
                                (concat (get team1 "lineup") (get team2 "lineup")))]
     (dmess/create-message! (:messaging @state) discord-announcements-channel-id
                            :content (str team1-name " vs " team2-name " is now ready!"
+                                         "\n" (format-discord-mentions discord-test-user-ids)
                                          "\n" "Check your DM's for server credentials."))
     (doseq [discord-id discord-test-user-ids]
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
