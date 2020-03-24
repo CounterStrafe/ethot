@@ -3,7 +3,6 @@
             [discljord.messaging :as dmess]
             [discljord.events :as devent]
             [clojure.core.async :as async]
-            [clojure.pprint :as pp]
             [clojure.string :as str]
             [clj-http.client :as hclient]
             [config.core :refer [env]]
@@ -20,10 +19,13 @@
 (def discord-token (:discord-token env))
 
 (defn format-discord-mentions
+  "Takes a sequence of Discord ID's and retuns a string that mentions them."
   [discord-ids]
   (str/join " " (map #(str "<@" % ">") discord-ids)))
 
 (defn notify-discord
+  "Announces the game in the announcements channel and DM's all the players with
+  the server creds."
   [tournament-id team1-id team2-id server-ip server-pass]
   (let [team1 (toornament/participant tournament-id team1-id)
         team2 (toornament/participant tournament-id team2-id)
@@ -44,60 +46,26 @@
                                              "\n" "Server: " server-ip
                                              "\n" "Password: " server-pass))))))
 
+(defn import-thread
+  "Imports the next available games and notifies Discord every 30s."
+  [tournament-id]
+  (doseq [match (toornament/importable-matches tournament-id)]
+    (let [match-id (get match "id")
+          game (first (toornament/games tournament-id match-id))
+          game-number (get game "number")]
+      (ebot/import-game tournament-id match-id game-number)
+      (toornament/set-game-status tournament-id match-id game-number "running")
+      (notify-discord tournament-id
+                      (get-in match ["opponents" 0 "participant" "id"])
+                      (get-in match ["opponents" 1 "participant" "id"])
+                      "SERVER-IP" "SERVER-PASS")))) ; TODO replace
+
 (defn start-tournament
+  "Logs into eBot and start a thread to continuously import games."
   [name]
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";              Step 1: Log into eBot Admin Page              ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
-
   (ebot/login)
-  (pp/pprint (ebot/get-admin-page))
-
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";         Step 2: Get the Tournament from Toornament         ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
-
-  (def tournament (toornament/get-tournament name))
-  (def tournament-id (get tournament "id"))
-  (pp/pprint tournament)
-
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";    Step 3: Get the Importable Matches from Toornament      ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
-
-  (def matches (toornament/importable-matches tournament-id))
-  (pp/pprint matches)
-
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";         Step 4: Get the Games for the First Match          ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
-
-  (def match (first matches))
-  (def match-id (get match "id"))
-  (def games (toornament/games tournament-id match-id))
-  (pp/pprint games)
-
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";               Step 4: Import the First Game                ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
-
-  (def game (first games))
-  (def game-id (get game "number"))
-  (pp/pprint (ebot/import-game tournament-id match-id game-id))
-
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";            Step 5: Assign the Game to a Server             ;")
-  (println ";               TODO: Needs to be Implemented                ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n")
-
-  (println "\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-  (println ";                   Step 6: Notify Discord                   ;")
-  (println ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n")
-
-  (notify-discord tournament-id
-                  (get-in match ["opponents" 0 "participant" "id"])
-                  (get-in match ["opponents" 1 "participant" "id"])
-                  "SERVER-IP" "SERVER-PASS")) ;TODO get from Step 5
+  (let [tournament-id (get (toornament/get-tournament name) "id")]
+    (.start (Thread. (fn [] (import-thread tournament-id))))))
 
 (defmulti handle-event
   (fn [event-type event-data]

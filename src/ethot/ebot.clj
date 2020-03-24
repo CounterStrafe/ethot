@@ -16,11 +16,14 @@
 (def base-url (:ebot-base-url env))
 
 (defn process-response
+  "Updates the atom with the new cookies in the response if they exist. Returns
+  the response."
   [resp]
   (if (contains? resp :cookies) (swap! state assoc :cookies (:cookies resp)))
   resp)
 
 (defn get-admin-page
+  "Returns the admin home page."
   []
   (let [url (str base-url "/admin.php/")]
     ; Don't throw exceptions because this page will return a 401
@@ -29,6 +32,7 @@
                                         :cookies (:cookies @state)}))))
 
 (defn login
+  "Logs into the eBot home page. Returns the resposne."
   []
   (let [url (str base-url "/admin.php/guard/login")
         ; Don't throw exceptions because this page will return a 401
@@ -46,8 +50,9 @@
     (process-response (hclient/post url post-args))))
 
 (defn import-game
-  [tournament-id match-id game-id]
-  (let [import-url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-id)]
+  "Imports the game. Returns the response."
+  [tournament-id match-id game-number]
+  (let [import-url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-number)]
     (process-response (hclient/post import-url {:connection-manager cm
                                                 :throw-exceptions false
                                                 :cookies (:cookies @state)}))))
