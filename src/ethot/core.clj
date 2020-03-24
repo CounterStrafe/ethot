@@ -58,7 +58,8 @@
       (notify-discord tournament-id
                       (get-in match ["opponents" 0 "participant" "id"])
                       (get-in match ["opponents" 1 "participant" "id"])
-                      "SERVER-IP" "SERVER-PASS")))) ; TODO replace
+                      "SERVER-IP" "SERVER-PASS") ; TODO replace
+      (Thread/sleep 30000))))
 
 (defn start-tournament
   "Logs into eBot and start a thread to continuously import games."
