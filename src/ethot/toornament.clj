@@ -74,15 +74,6 @@
                                   :Authorization (oauth "result")
                                   :Range "games=0-49"}}))))
 
-(defn set-game-status
-  "Set the status of the game. Returns the response."
-  [tournament-id match-id game-number status]
-  (let [url (str toornament-url "/organizer/v2/tournaments" tournament-id "/matches/" match-id "/games/" game-number)]
-    (process-response
-      (hclient/patch url {:headers {:X-Api-Key toornament-api-key
-                                    :Authorization (oauth "result")}
-                          :form-params {:status status}}))))
-
 (defn participant
   "Returns the participant."
   [tournament-id participant-id]

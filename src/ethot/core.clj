@@ -46,23 +46,30 @@
                                              "\n" "Server: " server-ip
                                              "\n" "Password: " server-pass))))))
 
+(defn unimported-matches
+  "Returns the matches that can and have not been imported yet."
+  [tournament-id]
+  (filter #(not (contains? (:imported-matches @state) (get % "id")))
+          (toornament/importable-matches tournament-id)))
+
 (defn import-thread
   "Imports the next available games and notifies Discord every 30s."
   [tournament-id]
-  (doseq [match (toornament/importable-matches tournament-id)]
+  (doseq [match (unimported-matches tournament-id)]
     (let [match-id (get match "id")
           game (first (toornament/games tournament-id match-id))
           game-number (get game "number")]
       (ebot/import-game tournament-id match-id game-number)
-      (toornament/set-game-status tournament-id match-id game-number "running")
+      (swap! state update :imported-matches conj match-id)
       (notify-discord tournament-id
                       (get-in match ["opponents" 0 "participant" "id"])
                       (get-in match ["opponents" 1 "participant" "id"])
-                      "SERVER-IP" "SERVER-PASS") ; TODO replace
-      (Thread/sleep 30000))))
+                      "SERVER-IP" "SERVER-PASS"))) ; TODO replace
+  (Thread/sleep 30000)
+  (recur tournament-id))
 
 (defn start-tournament
-  "Logs into eBot and start a thread to continuously import games."
+  "Logs into eBot and starts a thread to continuously import games."
   [name]
   (ebot/login)
   (let [tournament-id (get (toornament/get-tournament name) "id")]
@@ -91,7 +98,8 @@
         messaging-ch (dmess/start-connection! discord-token)
         init-state {:connection connection-ch
                     :event event-ch
-                    :messaging messaging-ch}]
+                    :messaging messaging-ch
+                    :imported-matches #{}}]
     (reset! state init-state)
     (devent/message-pump! event-ch handle-event)
     (dmess/stop-connection! messaging-ch)
