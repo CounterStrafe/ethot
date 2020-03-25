@@ -52,28 +52,33 @@
   (filter #(not (contains? (:imported-matches @state) (get % "id")))
           (toornament/importable-matches tournament-id)))
 
-(defn import-thread
-  "Imports the next available games and notifies Discord every 30s."
-  [tournament-id]
-  (doseq [match (unimported-matches tournament-id)]
-    (let [match-id (get match "id")
-          game (first (toornament/games tournament-id match-id))
-          game-number (get game "number")]
-      (ebot/import-game tournament-id match-id game-number)
-      (swap! state update :imported-matches conj match-id)
-      (notify-discord tournament-id
-                      (get-in match ["opponents" 0 "participant" "id"])
-                      (get-in match ["opponents" 1 "participant" "id"])
-                      "SERVER-IP" "SERVER-PASS"))) ; TODO replace
-  (Thread/sleep 30000)
-  (recur tournament-id))
-
-(defn start-tournament
-  "Logs into eBot and starts a thread to continuously import games."
-  [name]
+(defn run-stage
+  "Logs into eBot and continuously imports and exports all available games
+  every 30 seconds."
+  [tournament-name stage-name]
   (ebot/login)
-  (let [tournament-id (get (toornament/get-tournament name) "id")]
-    (.start (Thread. (fn [] (import-thread tournament-id))))))
+  (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
+        stage-id (get (toornament/get-stages stage-name) "id")]
+    (loop []
+      (doseq [match (unimported-matches tournament-id)]
+        (let [match-id (get match "id")
+              ; Currently we only support single-game matches
+              game (first (toornament/games tournament-id match-id))
+              game-number (get game "number")]
+          (ebot/import-game tournament-id match-id game-number)
+          (swap! state update :imported-matches conj match-id)
+          (notify-discord tournament-id
+                          (get-in match ["opponents" 0 "participant" "id"])
+                          (get-in match ["opponents" 1 "participant" "id"])
+                          "SERVER-IP" "SERVER-PASS"))) ; TODO replace
+
+      ; TODO exports here
+
+
+      (Thread/sleep 30000)
+      (when (and (:stage-running @state)
+                 (not (toornament/stage-complete? tournament-id stage-id)))
+        (recur)))))
 
 (defmulti handle-event
   (fn [event-type event-data]
@@ -86,10 +91,15 @@
 (defmethod handle-event :default
   [event-type event-data])
 
-(defmethod handle-event "!start-tournament"
+(defmethod handle-event "!run-stage"
   [event-type {:keys [content channel-id]}]
-  (let [tournament-name (second (str/split content #"!start-tournament "))]
-    (start-tournament tournament-name)))
+  (let [[tournament-name stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
+    (swap! state assoc :stage-running true)
+    (run-stage tournament-name stage-name)))
+
+(defmethod handle-event "!stop-stage"
+  [event-type {:keys [content channel-id]}]
+  (swap! state assoc :stage-running false))
 
 (defn -main
   [& args]
@@ -99,6 +109,7 @@
         init-state {:connection connection-ch
                     :event event-ch
                     :messaging messaging-ch
+                    :stage-running false
                     :imported-matches #{}}]
     (reset! state init-state)
     (devent/message-pump! event-ch handle-event)

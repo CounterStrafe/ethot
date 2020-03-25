@@ -5,10 +5,10 @@
             [config.core :refer [env]])
   (:gen-class))
 
+(def base-url "https://api.toornament.com")
 (def toornament-api-key (:toornament-api-key env))
 (def toornament-client-id (:toornament-client-id env))
 (def toornament-client-secret (:toornament-client-secret env))
-(def toornament-url "https://api.toornament.com")
 
 (defn process-response
   "Returns the JSON decoded body of the response."
@@ -18,7 +18,7 @@
 (defn oauth
   "Returns an access token with the provided scope."
   [scope]
-  (let [url (str toornament-url "/oauth/v2/token")]
+  (let [url (str base-url "/oauth/v2/token")]
     (get (process-response
            (hclient/post url {:form-params {:grant_type "client_credentials"
                                             :client_id toornament-client-id
@@ -29,29 +29,43 @@
 (defn tournaments
   "Returns all tournaments."
   []
-  (let [url (str toornament-url "/organizer/v2/tournaments")]
+  (let [url (str base-url "/organizer/v2/tournaments")]
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "view")
                                   :Range "tournaments=0-49"}}))))
 
 (defn get-tournament
-  "Returns the tournament with the provided name."
+  "Returns the tournament."
   [name]
   (some #(when (= (get % "name") name) %) (tournaments)))
 
 (defn stages
   "Returns all stages in the tournament."
   [tournament-id]
-  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/stages")]
+  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/stages")]
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "result")}}))))
 
+(defn get-stage
+  "Returns the stage in the tournament."
+  [tournament-id stage-name]
+  (some #(when (= (get % "name") name) %) (stages tournament-id)))
+
+(defn stage-complete?
+  "Returns true if all matches in the stage are complete."
+  [tournament-id stage-id]
+  (reduce (fn [val item]
+            (when (not val)
+              (reduced false))
+            (and %1 (= (get %2 "status") "completed")))
+    true (stage-matches tournament-id stage-id)))
+
 (defn matches
   "Returns all matches in the tournament."
   [tournament-id]
-  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/matches")]
+  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/matches")]
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "result")
@@ -65,10 +79,15 @@
                 (get-in % ["opponents" 1 "participant"]))
           (matches tournament-id)))
 
+(defn stage-matches
+  "Returns all matches in the stage."
+  [tournament-id stage-id]
+  (filter #(= (get % "stage_id") stage-id) (matches tournament-id)))
+
 (defn games
   "Returns all games in a match."
   [tournament-id match-id]
-  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/matches/" match-id "/games")]
+  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/matches/" match-id "/games")]
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "result")
@@ -77,7 +96,7 @@
 (defn participant
   "Returns the participant."
   [tournament-id participant-id]
-  (let [url (str toornament-url "/organizer/v2/tournaments/" tournament-id "/participants/" participant-id)]
+  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/participants/" participant-id)]
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "participant")}}))))
