@@ -56,31 +56,32 @@
   "Logs into eBot and continuously imports and exports all available games
   every 30 seconds."
   [tournament-name stage-name]
-  (ebot/login)
-  (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
-        stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
-    (async/go-loop []
-      (println "Running")
-      (doseq [match (unimported-matches tournament-id)]
-        (let [match-id (get match "id")
-              ; Currently we only support single-game matches
-              game (first (toornament/games tournament-id match-id))
-              game-number (get game "number")]
-          (ebot/import-game tournament-id match-id game-number)
-          (swap! state update :imported-matches conj match-id)
-          (notify-discord tournament-id
-                          (get-in match ["opponents" 0 "participant" "id"])
-                          (get-in match ["opponents" 1 "participant" "id"])
-                          "SERVER-IP" "SERVER-PASS"))) ; TODO replace
+  (async/go
+    (ebot/login)
+    (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
+          stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
+      (loop []
+        (println "Running")
+        (doseq [match (unimported-matches tournament-id)]
+          (let [match-id (get match "id")
+                ; Currently we only support single-game matches
+                game (first (toornament/games tournament-id match-id))
+                game-number (get game "number")]
+            (ebot/import-game tournament-id match-id game-number)
+            (swap! state update :imported-matches conj match-id)
+            (notify-discord tournament-id
+                            (get-in match ["opponents" 0 "participant" "id"])
+                            (get-in match ["opponents" 1 "participant" "id"])
+                            "SERVER-IP" "SERVER-PASS"))) ; TODO replace
 
-      ; TODO exports here
+        ; TODO exports here
 
 
-      (async/<! (async/timeout 30000))
-      (if (or (not (:stage-running @state))
-              (toornament/stage-complete? tournament-id stage-id))
-        (println "Stopping")
-        (recur)))))
+        (async/<! (async/timeout 30000))
+        (if (or (not (:stage-running @state))
+                (toornament/stage-complete? tournament-id stage-id))
+          (println "Stopping")
+          (recur))))))
 
 (defmulti handle-event
   (fn [event-type event-data]
