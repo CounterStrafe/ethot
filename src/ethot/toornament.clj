@@ -51,16 +51,7 @@
 (defn get-stage
   "Returns the stage in the tournament."
   [tournament-id stage-name]
-  (some #(when (= (get % "name") name) %) (stages tournament-id)))
-
-(defn stage-complete?
-  "Returns true if all matches in the stage are complete."
-  [tournament-id stage-id]
-  (reduce (fn [val item]
-            (when (not val)
-              (reduced false))
-            (and %1 (= (get %2 "status") "completed")))
-    true (stage-matches tournament-id stage-id)))
+  (some #(when (= (get % "name") stage-name) %) (stages tournament-id)))
 
 (defn matches
   "Returns all matches in the tournament."
@@ -83,6 +74,15 @@
   "Returns all matches in the stage."
   [tournament-id stage-id]
   (filter #(= (get % "stage_id") stage-id) (matches tournament-id)))
+
+(defn stage-complete?
+  "Returns true if all matches in the stage are complete."
+  [tournament-id stage-id]
+  (reduce (fn [val match]
+            (when (not val)
+              (reduced false))
+            (and val (= (get match "status") "completed")))
+    true (stage-matches tournament-id stage-id)))
 
 (defn games
   "Returns all games in a match."

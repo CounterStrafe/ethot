@@ -58,8 +58,9 @@
   [tournament-name stage-name]
   (ebot/login)
   (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
-        stage-id (get (toornament/get-stages stage-name) "id")]
-    (loop []
+        stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
+    (async/go-loop []
+      (println "Running")
       (doseq [match (unimported-matches tournament-id)]
         (let [match-id (get match "id")
               ; Currently we only support single-game matches
@@ -75,9 +76,10 @@
       ; TODO exports here
 
 
-      (Thread/sleep 30000)
-      (when (and (:stage-running @state)
-                 (not (toornament/stage-complete? tournament-id stage-id)))
+      (async/<! (async/timeout 30000))
+      (if (or (not (:stage-running @state))
+              (toornament/stage-complete? tournament-id stage-id))
+        (println "Stopping")
         (recur)))))
 
 (defmulti handle-event
@@ -94,11 +96,17 @@
 (defmethod handle-event "!run-stage"
   [event-type {:keys [content channel-id]}]
   (let [[tournament-name stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
-    (swap! state assoc :stage-running true)
-    (run-stage tournament-name stage-name)))
+    (println "Received run")
+    (if (:stage-running @state)
+      (dmess/create-message! (:messaging @state) channel-id
+                             :content "A stage is already running.")
+      (do
+        (swap! state assoc :stage-running true)
+        (run-stage tournament-name stage-name)))))
 
 (defmethod handle-event "!stop-stage"
   [event-type {:keys [content channel-id]}]
+  (println "Received stop")
   (swap! state assoc :stage-running false))
 
 (defn -main
