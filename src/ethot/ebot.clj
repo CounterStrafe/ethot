@@ -58,7 +58,7 @@
                                          :cookies (:cookies @state)}))))
 
 (defn assign-server
-  "Assigns a server to the match."
+  "Assigns the server to the match."
   [server-id ebot-match-id ]
   (let [url (str base-url "/admin.php/matchs/current")]
     (process-response (hclient/post url {:connection-manager cm
