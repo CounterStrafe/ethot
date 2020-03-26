@@ -42,7 +42,8 @@
         csrf (-> (s/id :signin__csrf_token)
                  (s/select htree)
                  first :attrs :value)
-        post-args (assoc get-args :cookies (:cookies @state)
+        post-args (assoc get-args :connection-manager cm
+                                  :cookies (:cookies @state)
                                   :form-params
                                     {"signin[username]" admin-user
                                      "signin[password]" admin-pass
@@ -52,7 +53,16 @@
 (defn import-game
   "Imports the game. Returns the response."
   [tournament-id match-id game-number]
-  (let [import-url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-number)]
-    (process-response (hclient/post import-url {:connection-manager cm
-                                                :throw-exceptions false
-                                                :cookies (:cookies @state)}))))
+  (let [url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-number)]
+    (process-response (hclient/post url {:connection-manager cm
+                                         :cookies (:cookies @state)}))))
+
+(defn assign-server
+  "Assigns the server to the match."
+  [server-id ebot-match-id ]
+  (let [url (str base-url "/admin.php/matchs/current")]
+    (process-response (hclient/post url {:connection-manager cm
+                                         :cookies (:cookies @state)
+                                         :form-params
+                                           {"server_id" server-id
+                                            "match_id" ebot-match-id}}))))
