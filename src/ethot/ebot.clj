@@ -66,3 +66,12 @@
                                          :form-params
                                            {"server_id" server-id
                                             "match_id" ebot-match-id}}))))
+
+(defn start-match
+  "Starts the match."
+  [ebot-match-id]
+  (let [url (str base-url "/admin.php/matchs/start/server")]
+    (process-response (hclient/post url {:connection-manager cm
+                                         :cookies (:cookies @state)
+                                         :form-params
+                                           {"match_id" ebot-match-id}}))))
