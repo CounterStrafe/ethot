@@ -26,7 +26,7 @@
 (defn notify-discord
   "Announces the game in the announcements channel and DM's all the players with
   the server creds."
-  [tournament-id team1-id team2-id server-ip server-pass]
+  [tournament-id team1-id team2-id {:keys [ip config_password]}]
   (let [team1 (toornament/participant tournament-id team1-id)
         team2 (toornament/participant tournament-id team2-id)
         team1-name (get team1 "name")
@@ -43,8 +43,8 @@
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str team1-name " vs " team2-name " is now ready!"
-                                             "\n" "Server: " server-ip
-                                             "\n" "Password: " server-pass))))))
+                                             "\n" "Server: " ip
+                                             "\n" "Password: " config_password))))))
 
 (defn unimported-matches
   "Returns the matches that can and have not been imported yet."
@@ -66,13 +66,14 @@
           (let [match-id (get match "id")
                 ; Currently we only support single-game matches
                 game (first (toornament/games tournament-id match-id))
-                game-number (get game "number")]
-            (ebot/import-game tournament-id match-id game-number)
+                game-number (get game "number")
+                ebot-match-id (ebot/import-game tournament-id match-id game-number)]
+            (ebot/assign-server 1 ebot-match-id) ; TODO remove hardcoded server-id
             (swap! state update :imported-matches conj match-id)
             (notify-discord tournament-id
                             (get-in match ["opponents" 0 "participant" "id"])
                             (get-in match ["opponents" 1 "participant" "id"])
-                            "SERVER-IP" "SERVER-PASS"))) ; TODO replace
+                            (ebot/get-server-creds ebot-match-id))))
 
         ; TODO exports here
 
