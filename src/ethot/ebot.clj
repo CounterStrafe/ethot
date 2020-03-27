@@ -4,7 +4,9 @@
             [clj-http.conn-mgr :as conn-mgr]
             [config.core :refer [env]]
             [hickory.core :refer [as-hickory parse]]
-            [hickory.select :as s])
+            [hickory.select :as s]
+            [next.jdbc :as jdbc]
+            [next.jdbc.result-set :as rs])
   (:gen-class))
 
 (def state (atom {:cookies {}}))
@@ -14,6 +16,10 @@
 (def admin-user (:ebot-admin-user env))
 (def admin-pass (:ebot-admin-pass env))
 (def base-url (:ebot-base-url env))
+(def db-name (:mysql-db env))
+(def db-host (:mysql-host env))
+(def db-user (:mysql-user env))
+(def db-password (:mysql-pass env))
 
 (defn process-response
   "Updates the atom with the new cookies in the response if they exist. Returns
@@ -75,3 +81,15 @@
                                          :cookies (:cookies @state)
                                          :form-params
                                            {"match_id" ebot-match-id}}))))
+
+(defn get-server-creds
+  "Gets the server IP and password."
+  [ebot-match-id]
+  (let [db {:dbtype "mysql"
+            :dbname db-name
+            :host db-host
+            :user db-user
+            :password db-password}
+        ds (jdbc/get-datasource db)]
+    (jdbc/execute-one! ds ["select ip, config_password from matchs where id = ?" ebot-match-id]
+                       {:builder-fn rs/as-unqualified-lower-maps})))
