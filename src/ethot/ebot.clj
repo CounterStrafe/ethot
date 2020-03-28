@@ -1,5 +1,6 @@
 (ns ethot.ebot
-  (:require [clojure.string :as str]
+  (:require [clojure.data.json :as json]
+            [clojure.string :as str]
             [clj-http.client :as hclient]
             [clj-http.conn-mgr :as conn-mgr]
             [config.core :refer [env]]
@@ -57,11 +58,12 @@
     (process-response (hclient/post url post-args))))
 
 (defn import-game
-  "Imports the game. Returns the response."
+  "Imports the game. Returns the eBot match ID."
   [tournament-id match-id game-number]
-  (let [url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-number)]
-    (process-response (hclient/post url {:connection-manager cm
-                                         :cookies (:cookies @state)}))))
+  (let [url (str base-url "/admin.php/matchs/toornament/import/" tournament-id "/" match-id "/" game-number)
+        resp (process-response (hclient/post url {:connection-manager cm
+                                                  :cookies (:cookies @state)}))]
+    (get (json/read-str (:body resp)) "matchId")))
 
 (defn assign-server
   "Assigns the server to the match."
@@ -83,7 +85,7 @@
                                            {"match_id" ebot-match-id}}))))
 
 (defn get-server-creds
-  "Gets the server IP and password."
+  "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
   [ebot-match-id]
   (let [db {:dbtype "mysql"
             :dbname db-name
