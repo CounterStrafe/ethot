@@ -14,6 +14,7 @@
 
 (def discord-admin-channel-id (:discord-admin-channel-id env))
 (def discord-announcements-channel-id (:discord-announcements-channel-id env))
+(def discord-server-channel-ids (:discord-server-channel-ids env))
 ; TODO: Remove once we figure out how we're getting user-ids
 (def discord-test-user-ids (:discord-test-user-ids env))
 (def discord-token (:discord-token env))
@@ -26,25 +27,22 @@
 (defn notify-discord
   "Announces the game in the announcements channel and DM's all the players with
   the server creds."
-  [tournament-id team1-id team2-id {:keys [ip config_password]}]
+  [tournament-id team1-id team2-id server-id {:keys [ip config_password]}]
   (let [team1 (toornament/participant tournament-id team1-id)
         team2 (toornament/participant tournament-id team2-id)
         team1-name (get team1 "name")
         team2-name (get team2 "name")
+        discord-channel-id (get discord-server-channel-ids (- server-id 1))
         ; Not used now but we will need it when trying to determine who to send
         ; the DM's to.
         discord-usernames (map #(get-in % ["custom_fields" "discord_username"])
                                (concat (get team1 "lineup") (get team2 "lineup")))]
-    (dmess/create-message! (:messaging @state) discord-announcements-channel-id
+    (dmess/create-message! (:messaging @state) discord-channel-id
                            :content (str team1-name " vs " team2-name " is now ready!"
-                                         "\n" (format-discord-mentions discord-test-user-ids)
-                                         "\n" "Check your DM's for server credentials."))
-    (doseq [discord-id discord-test-user-ids]
-      (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
-        (dmess/create-message! (:messaging @state) channel-id
-                               :content (str team1-name " vs " team2-name " is now ready!"
-                                             "\n" "Server: " ip
-                                             "\n" "Password: " config_password))))))
+                                         "\n" (format-discord-mentions discord-test-user-ids)))
+    (dmess/create-message! (:messaging @state) discord-announcements-channel-id
+                           :content (str team1-name " vs " team2-name " is now ready "
+                                         "on Server " server-id))))
 
 (defn unimported-matches
   "Returns the matches that can and have not been imported yet."
@@ -77,6 +75,7 @@
             (notify-discord tournament-id
                             (get-in match ["opponents" 0 "participant" "id"])
                             (get-in match ["opponents" 1 "participant" "id"])
+                            server-id
                             (ebot/get-server-creds ebot-match-id))))
 
         ; TODO exports here
