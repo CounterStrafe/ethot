@@ -67,8 +67,12 @@
                 ; Currently we only support single-game matches
                 game (first (toornament/games tournament-id match-id))
                 game-number (get game "number")
-                ebot-match-id (ebot/import-game tournament-id match-id game-number)]
-            (ebot/assign-server 1 ebot-match-id) ; TODO remove hardcoded server-id
+                ebot-match-id (ebot/import-game tournament-id match-id game-number)
+                ; This code assumes there are more available servers than games
+                ; that can be played at one time. There is no logic for
+                ; prioritising games earlier in the bracket.
+                server-id (ebot/get-available-server)]
+            (ebot/assign-server server-id ebot-match-id)
             (swap! state update :imported-matches conj match-id)
             (notify-discord tournament-id
                             (get-in match ["opponents" 0 "participant" "id"])
@@ -120,6 +124,8 @@
                     :event event-ch
                     :messaging messaging-ch
                     :stage-running false
+                    ; TODO: Figure out how to remove matches from here while the
+                    ; bot is running in case we need to re-import a match.
                     :imported-matches #{}}]
     (reset! state init-state)
     (devent/message-pump! event-ch handle-event)

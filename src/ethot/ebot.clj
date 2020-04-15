@@ -21,6 +21,7 @@
 (def db-host (:mysql-host env))
 (def db-user (:mysql-user env))
 (def db-password (:mysql-pass env))
+(def server-id-range (apply range (:server-id-range env)))
 
 (defn process-response
   "Updates the atom with the new cookies in the response if they exist. Returns
@@ -83,6 +84,25 @@
                                          :cookies (:cookies @state)
                                          :form-params
                                            {"match_id" ebot-match-id}}))))
+
+(defn get-available-server
+  "Returns the server ID of the next available server in ascending order."
+  []
+  (let [db {:dbtype "mysql"
+            :dbname db-name
+            :host db-host
+            :user db-user
+            :password db-password}
+        ds (jdbc/get-datasource db)
+        ; Match statuses below 13 indicate a game is either running or not started yet
+        unavailable-servers (jdbc/execute-one! ds ["select distinct s.id
+                                                    from servers s
+                                                    left join matchs m
+                                                    on s.id = m.server_id
+                                                    where m.status < 13
+                                                    order by s.id asc"]
+                                               {:builder-fn rs/as-unqualified-lower-maps})]
+        (first (apply sorted-set (clojure.set/difference server-id-range (set (:id unavailable-servers)))))))
 
 (defn get-server-creds
   "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
