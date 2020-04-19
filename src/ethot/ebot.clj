@@ -118,12 +118,14 @@
 
 (defn set-map
   "Sets the map for the match."
-  [ebot-match-id map]
+  [ebot-match-id map-name]
   (let [db {:dbtype "mysql"
             :dbname db-name
             :host db-host
             :user db-user
             :password db-password}
         ds (jdbc/get-datasource db)]
-    (jdbc/execute-one! ds ["update matchs set map = ? where id = ?" map ebot-match-id]
+    (jdbc/execute-one! ds ["update maps
+                            set map_name = ?
+                            where match_id = ?" map-name, ebot-match-id]
                        {:builder-fn rs/as-unqualified-lower-maps})))
