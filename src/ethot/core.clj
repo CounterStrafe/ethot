@@ -80,7 +80,7 @@
                                   1) ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
     (assoc state :games-awaiting-close
-           (reduce #(assoc %1 await-game-status close-game-time %2)
+           (reduce #(assoc %1 %2 (await-game-status close-game-time %2))
                    {}
                    recently-ended)
      games-awaiting-close)))
