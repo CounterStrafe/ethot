@@ -10,8 +10,7 @@
             [ethot.toornament :as toornament])
   (:gen-class))
 
-(def state (atom {:ended-games #{}
-                  :games-awaiting-close {}
+(def state (atom {:games-awaiting-close {}
                   :close-game-time 120000}))
 
 (def discord-admin-channel-id (:discord-admin-channel-id env))
@@ -109,7 +108,7 @@
                             (ebot/get-server-creds ebot-match-id))))
 
         ;exports here
-        (export-games @state)
+        (swap! state export-games tournament-id stage-id)
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
                 (toornament/stage-complete? tournament-id stage-id))
