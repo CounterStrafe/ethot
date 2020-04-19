@@ -22,6 +22,13 @@
 (def db-user (:mysql-user env))
 (def db-password (:mysql-pass env))
 
+(def ds (jdbc/get-datasource
+         {:dbtype "mysql"
+          :dbname db-name
+          :host db-host
+          :user db-user
+          :password db-password}))
+
 (defn process-response
   "Updates the atom with the new cookies in the response if they exist. Returns
   the response."
@@ -65,6 +72,13 @@
                                                   :cookies (:cookies @state)}))]
     (get (json/read-str (:body resp)) "matchId")))
 
+(defn export-game
+  "Imports the game. Returns the eBot match ID."
+  [ebot-match-id]
+  (let [url (str base-url "/admin.php/matchs/toornament/export/" ebot-match-id )]
+    (process-response (hclient/post url {:connection-manager cm
+                                         :cookies (:cookies @state)}))))
+
 (defn assign-server
   "Assigns the server to the match."
   [server-id ebot-match-id ]
@@ -87,11 +101,15 @@
 (defn get-server-creds
   "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
   [ebot-match-id]
-  (let [db {:dbtype "mysql"
-            :dbname db-name
-            :host db-host
-            :user db-user
-            :password db-password}
-        ds (jdbc/get-datasource db)]
-    (jdbc/execute-one! ds ["select ip, config_password from matchs where id = ?" ebot-match-id]
-                       {:builder-fn rs/as-unqualified-lower-maps})))
+  (jdbc/execute-one! ds ["select ip, config_password from matchs where id = ?" ebot-match-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
+
+(defn get-newly-ended-games
+  "Retrieves the games that have recently ended give the games we know already ended
+  TODO: see if query can take a list directly for the not-in"
+  [exportable-identifier-ids]
+  (map :id (jdbc/execute! ds
+                          [(str "select id from matchs where identifier-id in (?) "
+                                "and status >= 13")
+                           (str/join "," exportable-identifier-ids)]
+                          {:builder-fn rs/as-unqualified-lower-maps})))

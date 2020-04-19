@@ -10,7 +10,9 @@
             [ethot.toornament :as toornament])
   (:gen-class))
 
-(def state (atom {}))
+(def state (atom {:ended-games #{}
+                  :games-awaiting-close {}
+                  :close-game-time 120000}))
 
 (def discord-admin-channel-id (:discord-admin-channel-id env))
 (def discord-announcements-channel-id (:discord-announcements-channel-id env))
@@ -52,6 +54,37 @@
   (filter #(not (contains? (:imported-matches @state) (get % "id")))
           (toornament/importable-matches tournament-id)))
 
+(defn await-game-status
+  "waits for the channel to recieve a map of inforamiotn about the caller
+  or nil from timeout and will the find the game to delay exporting and make sure"
+  [time-to-wait id]
+  (let [chan (async/timeout time-to-wait)]
+    (async/go
+      (if (nil? (async/<! chan))
+        (do
+          (println (str "exported game: " id))
+          (ebot/export-game id)
+          (swap! state dissoc id))
+        (println "report process")))
+    chan))
+
+(defn export-games
+  "Will find new games that have recently ended and create a new channel that
+  will be notified when either the 5min timeout is reached to allow the next
+  game in the bracket to be started OR a player reported suspicious activity
+  and will stop the starting of the next game until manually restarted by a TO"
+  [state tournament-id stage-id]
+  (let [{:keys [games-awaiting-close]} state
+        ready-games (toornament/importable-matches tournament-id)
+        identifier-ids (map #(str tournament-id
+                                  (get % "id")
+                                  1) ready-games)
+        recently-ended (ebot/get-newly-ended-games identifier-ids)]
+    (assoc state :games-awaiting-close
+     (merge (zipmap recently-ended
+                    (repeatedly await-game-status))
+            games-awaiting-close))))
+
 (defn run-stage
   "Logs into eBot and continuously imports and exports all available games
   every 30 seconds."
@@ -75,9 +108,8 @@
                             (get-in match ["opponents" 1 "participant" "id"])
                             (ebot/get-server-creds ebot-match-id))))
 
-        ; TODO exports here
-
-
+        ;exports here
+        (export-games @state)
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
                 (toornament/stage-complete? tournament-id stage-id))
@@ -110,6 +142,10 @@
   [event-type {:keys [content channel-id]}]
   (println "Received stop")
   (swap! state assoc :stage-running false))
+
+(defmethod handle-event "!report"
+  [event-type {{username :username id :id disc :discriminator} :author}]
+  (println "todo"))
 
 (defn -main
   [& args]
