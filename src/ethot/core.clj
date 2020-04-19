@@ -73,16 +73,17 @@
   game in the bracket to be started OR a player reported suspicious activity
   and will stop the starting of the next game until manually restarted by a TO"
   [state tournament-id stage-id]
-  (let [{:keys [games-awaiting-close]} state
+  (let [{:keys [games-awaiting-close close-game-time]} state
         ready-games (toornament/importable-matches tournament-id)
         identifier-ids (map #(str tournament-id
                                   (get % "id")
                                   1) ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
     (assoc state :games-awaiting-close
-     (merge (zipmap recently-ended
-                    (repeatedly await-game-status))
-            games-awaiting-close))))
+           (reduce #(assoc %1 await-game-status close-game-time %2)
+                   {}
+                   recently-ended)
+     games-awaiting-close)))
 
 (defn run-stage
   "Logs into eBot and continuously imports and exports all available games
