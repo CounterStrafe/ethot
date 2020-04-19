@@ -115,3 +115,15 @@
         ds (jdbc/get-datasource db)]
     (jdbc/execute-one! ds ["select ip, config_password from matchs where id = ?" ebot-match-id]
                        {:builder-fn rs/as-unqualified-lower-maps})))
+
+(defn set-map
+  "Sets the map for the match."
+  [ebot-match-id map]
+  (let [db {:dbtype "mysql"
+            :dbname db-name
+            :host db-host
+            :user db-user
+            :password db-password}
+        ds (jdbc/get-datasource db)]
+    (jdbc/execute-one! ds ["update matchs set map = ? where id = ?" map ebot-match-id]
+                       {:builder-fn rs/as-unqualified-lower-maps})))
