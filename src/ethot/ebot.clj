@@ -74,7 +74,7 @@
     (get (json/read-str (:body resp)) "matchId")))
 
 (defn export-game
-  "Imports the game. Returns the eBot match ID."
+  "Exports the game."
   [ebot-match-id]
   (let [url (str base-url "/admin.php/matchs/toornament/export/" ebot-match-id )]
     (process-response (hclient/post url {:connection-manager cm
@@ -128,22 +128,20 @@
   "Retrieves the games that have recently ended give the games we know already ended
   TODO: see if query can take a list directly for the not-in"
   [exportable-identifier-ids]
-  (map :id (jdbc/execute! ds
-                          [(str "select id from matchs where identifier-id in (?) "
-                                "and status >= 13")
-                           (str/join "," exportable-identifier-ids)]
-                          {:builder-fn rs/as-unqualified-lower-maps})))
+  (let [result (jdbc/execute! ds
+                              [(str "select id from matchs where identifier_id in ("
+                                    (str/join "," exportable-identifier-ids) ") "
+                                    "and status >= 13")]
+                              {:builder-fn rs/as-unqualified-lower-maps})]
+    (println exportable-identifier-ids)
+    (println result)
+    (map :id result)))
+
 
 (defn set-map
   "Sets the map for the match."
   [ebot-match-id map-name]
-  (let [db {:dbtype "mysql"
-            :dbname db-name
-            :host db-host
-            :user db-user
-            :password db-password}
-        ds (jdbc/get-datasource db)]
-    (jdbc/execute-one! ds ["update maps
+  (jdbc/execute-one! ds ["update maps
                             set map_name = ?
                             where match_id = ?" map-name, ebot-match-id]
-                       {:builder-fn rs/as-unqualified-lower-maps})))
+                     {:builder-fn rs/as-unqualified-lower-maps}))

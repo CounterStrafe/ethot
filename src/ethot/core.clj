@@ -10,8 +10,7 @@
             [ethot.toornament :as toornament])
   (:gen-class))
 
-(def state (atom {:games-awaiting-close {}
-                  :close-game-time 120000}))
+(def state (atom {}))
 
 (def discord-admin-channel-id (:discord-admin-channel-id env))
 (def discord-announcements-channel-id (:discord-announcements-channel-id env))
@@ -94,15 +93,17 @@
   [state tournament-id stage-id]
   (let [{:keys [games-awaiting-close close-game-time]} state
         ready-games (toornament/importable-matches tournament-id)
-        identifier-ids (map #(str tournament-id
+        identifier-ids (map #(str "'" tournament-id
+                                  "."
                                   (get % "id")
-                                  1) ready-games)
+                                  "."
+                                  1
+                                  "'") ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
     (assoc state :games-awaiting-close
            (reduce #(assoc %1 %2 (await-game-status close-game-time %2))
                    {}
-                   recently-ended)
-     games-awaiting-close)))
+                   (filter #(not (contains? games-awaiting-close %)) recently-ended)))))
 
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
@@ -112,7 +113,7 @@
         team1-name (get team1 "name")
         team2-name (get team2 "name")
         veto-lobby {:ebot-match-id ebot-match-id
-                    :teams (list team1 team2);(shuffle (list team1 team2))
+                    :teams (list team1 team2) ;(shuffle (list team1 team2))
                     :maps-left map-pool
                     :discord-channel-id discord-channel-id}
         first-to-ban (first (:teams veto-lobby))]
@@ -198,8 +199,9 @@
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto match-id ebot-match-id server-id team1 team2)))
 
-        ;exports here
-        (swap! state export-games tournament-id stage-id)
+                                        ;exports here
+        (println "MADE IT HERE")
+        (swap! state #(export-games % tournament-id stage-id))
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
                 (toornament/stage-complete? tournament-id stage-id))
@@ -289,8 +291,12 @@
                     ; eBot database
                     :imported-matches #{}
                     :veto-lobbies {}
-                    :discord-user-ids {}}]
+                    :discord-user-ids {}
+                    :games-awaiting-close {}
+                    :close-game-time 60000}]
     (reset! state init-state)
     (devent/message-pump! event-ch handle-event)
     (dmess/stop-connection! messaging-ch)
     (dconn/disconnect-bot! connection-ch)))
+
+
