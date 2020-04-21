@@ -71,6 +71,40 @@
   (filter #(not (contains? (:imported-matches @state) (get % "id")))
           (toornament/importable-matches tournament-id)))
 
+(defn await-game-status
+  "waits for the channel to recieve a map of inforamiotn about the caller
+  or nil from timeout and will the find the game to delay exporting and make sure"
+  [time-to-wait id]
+  (let [chan (async/timeout time-to-wait)]
+    (async/go
+      (if (nil? (async/<! chan))
+        (do
+          (println (str "exported game: " id))
+          (ebot/export-game id)
+          (swap! state dissoc id))
+        (println "report process")))
+    chan))
+
+(defn export-games
+  "Will find new games that have recently ended and create a new channel that
+  will be notified when either the 5min timeout is reached to allow the next
+  game in the bracket to be started OR a player reported suspicious activity
+  and will stop the starting of the next game until manually restarted by a TO"
+  [state tournament-id stage-id]
+  (let [{:keys [games-awaiting-close close-game-time]} state
+        ready-games (toornament/importable-matches tournament-id)
+        identifier-ids (map #(str "'" tournament-id
+                                  "."
+                                  (get % "id")
+                                  "."
+                                  1
+                                  "'") ready-games)
+        recently-ended (ebot/get-newly-ended-games identifier-ids)]
+    (assoc state :games-awaiting-close
+           (reduce #(assoc %1 %2 (await-game-status close-game-time %2))
+                   {}
+                   (filter #(not (contains? games-awaiting-close %)) recently-ended)))))
+
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
   veto has started."
@@ -79,7 +113,7 @@
         team1-name (get team1 "name")
         team2-name (get team2 "name")
         veto-lobby {:ebot-match-id ebot-match-id
-                    :teams (list team1 team2);(shuffle (list team1 team2))
+                    :teams (list team1 team2) ;(shuffle (list team1 team2))
                     :maps-left map-pool
                     :discord-channel-id discord-channel-id}
         first-to-ban (first (:teams veto-lobby))]
@@ -165,9 +199,9 @@
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto match-id ebot-match-id server-id team1 team2)))
 
-        ; TODO exports here
-
-
+                                        ;exports here
+        (println "MADE IT HERE")
+        (swap! state #(export-games % tournament-id stage-id))
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
                 (toornament/stage-complete? tournament-id stage-id))
@@ -199,6 +233,10 @@
   [event-type event-data]
   (println "Received stop")
   (swap! state assoc :stage-running false))
+
+(defmethod handle-event "!report"
+  [event-type {{username :username id :id disc :discriminator} :author}]
+  (println "todo"))
 
 (defmethod handle-event "!ban"
   [event-type {{username :username id :id disc :discriminator} :author, :keys [channel-id content]}]
@@ -253,8 +291,12 @@
                     ; eBot database
                     :imported-matches #{}
                     :veto-lobbies {}
-                    :discord-user-ids {}}]
+                    :discord-user-ids {}
+                    :games-awaiting-close {}
+                    :close-game-time 60000}]
     (reset! state init-state)
     (devent/message-pump! event-ch handle-event)
     (dmess/stop-connection! messaging-ch)
     (dconn/disconnect-bot! connection-ch)))
+
+
