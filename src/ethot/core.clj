@@ -113,7 +113,7 @@
         team1-name (get team1 "name")
         team2-name (get team2 "name")
         veto-lobby {:ebot-match-id ebot-match-id
-                    :teams (list team1 team2) ;(shuffle (list team1 team2))
+                    :teams (shuffle (list team1 team2))
                     :maps-left map-pool
                     :discord-channel-id discord-channel-id}
         first-to-ban (first (:teams veto-lobby))]
