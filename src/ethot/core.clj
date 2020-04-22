@@ -220,19 +220,21 @@
 
 (defmethod handle-event "!run-stage"
   [event-type {:keys [content channel-id]}]
-  (let [[tournament-name stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
-    (println "Received run")
-    (if (:stage-running @state)
-      (dmess/create-message! (:messaging @state) channel-id
-                             :content "A stage is already running.")
-      (do
-        (swap! state assoc :stage-running true)
-        (run-stage tournament-name stage-name)))))
+  (when (= channel-id discord-admin-channel-id)
+    (let [[tournament-name stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
+      (println "Received run")
+      (if (:stage-running @state)
+        (dmess/create-message! (:messaging @state) channel-id
+                               :content "A stage is already running.")
+        (do
+          (swap! state assoc :stage-running true)
+        ( run-stage tournament-name stage-name))))))
 
 (defmethod handle-event "!stop-stage"
-  [event-type event-data]
-  (println "Received stop")
-  (swap! state assoc :stage-running false))
+  [event-type {:keys [channel-id]}]
+  (when (= channel-id discord-admin-channel-id)
+    (println "Received stop")
+    (swap! state assoc :stage-running false)))
 
 (defmethod handle-event "!report"
   [event-type {{username :username id :id disc :discriminator} :author}]
@@ -298,5 +300,3 @@
     (devent/message-pump! event-ch handle-event)
     (dmess/stop-connection! messaging-ch)
     (dconn/disconnect-bot! connection-ch)))
-
-
