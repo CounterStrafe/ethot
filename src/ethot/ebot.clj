@@ -133,8 +133,6 @@
                                     (str/join "," exportable-identifier-ids) ") "
                                     "and status >= 13")]
                               {:builder-fn rs/as-unqualified-lower-maps})]
-    (println exportable-identifier-ids)
-    (println result)
     (map :id result)))
 
 

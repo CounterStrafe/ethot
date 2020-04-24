@@ -79,10 +79,8 @@
     (async/go
       (if (nil? (async/<! chan))
         (do
-          (println (str "exported game: " id))
           (ebot/export-game id)
-          (swap! state dissoc id))
-        (println "report process")))
+          (swap! state dissoc id))))
     chan))
 
 (defn export-games
@@ -158,12 +156,13 @@
         channel-id (:discord-channel-id veto-lobby)
         teams (:teams veto-lobby)
         ban-team (first teams)
-        next-ban-team (second teams)]
+        next-ban-team (second teams)
+        new-veto-lobby (assoc veto-lobby :maps-left maps-left)
+        new-veto-lobby (assoc new-veto-lobby :teams (reverse teams))]
     (if (= (count maps-left) 1)
       (end-veto match-id veto-lobby map-name (first maps-left))
       (do
-        (swap! state assoc-in [:veto-lobbies match-id :maps-left] maps-left)
-        (swap! state assoc-in [:veto-lobbies match-id :teams] (reverse teams))
+        (swap! state assoc-in [:veto-lobbies match-id] new-veto-lobby)
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str (get ban-team "name") " banned "
                                              map-name ". **" (get next-ban-team "name")
@@ -200,7 +199,6 @@
             (start-veto match-id ebot-match-id server-id team1 team2)))
 
                                         ;exports here
-        (println "MADE IT HERE")
         (swap! state #(export-games % tournament-id stage-id))
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
