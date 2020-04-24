@@ -68,7 +68,7 @@
 (defn unimported-matches
   "Returns the matches that can and have not been imported yet."
   [tournament-id]
-  (filter #(not (contains? (:imported-matches @state) (get % "id")))
+  (filter #(not (ebot/imported? tournament-id (get % "id") 1))
           (toornament/importable-matches tournament-id)))
 
 (defn await-game-status
@@ -194,7 +194,6 @@
                 ; prioritising games earlier in the bracket.
                 server-id (ebot/get-available-server)]
             (ebot/assign-server server-id ebot-match-id)
-            (swap! state update :imported-matches conj match-id)
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto match-id ebot-match-id server-id team1 team2)))
 
@@ -287,9 +286,6 @@
                     :event event-ch
                     :messaging messaging-ch
                     :stage-running false
-                    ; TODO: Instead of keeping track of this here, use the
-                    ; eBot database
-                    :imported-matches #{}
                     :veto-lobbies {}
                     :discord-user-ids {}
                     :games-awaiting-close {}

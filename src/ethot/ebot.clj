@@ -140,6 +140,16 @@
   "Sets the map for the match."
   [ebot-match-id map-name]
   (jdbc/execute-one! ds ["update maps
-                            set map_name = ?
-                            where match_id = ?" map-name, ebot-match-id]
+                          set map_name = ?
+                          where match_id = ?" map-name, ebot-match-id]
                      {:builder-fn rs/as-unqualified-lower-maps}))
+
+(defn imported?
+  "Returns true if the match has alredy been imported."
+  [tournament-id match-id game-number]
+  (not= (:c (jdbc/execute-one! ds ["select count(*) as c
+                                    from matchs
+                                    where identifier_id = ?"
+                                   (str/join "." [tournament-id match-id game-number])]
+                               {:builder-fn rs/as-unqualified-lower-maps}))
+        0))
