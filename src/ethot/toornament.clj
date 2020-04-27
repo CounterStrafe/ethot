@@ -112,3 +112,11 @@
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
                                   :Authorization (oauth "participant")}}))))
+
+(defn particpants
+  "Returns all participants in the tournament."
+  [tournament-id]
+  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/particpants")]
+    (process-response
+      (hclient/get url {:headers {:X-Api-Key toornament-api-key
+                                  :Authorization (oauth "participant")}}))))
