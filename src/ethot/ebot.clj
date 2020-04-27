@@ -143,8 +143,8 @@
                               [(str "select id from matchs where "
                                     team-name " "
                                     "in (team_a_name, team_b_name)")]
-                              {:builder-fn rs/as-unqualified-lower-maps})])
-  (map :id result))
+                              {:builder-fn rs/as-unqualified-lower-maps})]
+    (map :id result)))
 
 
 (defn set-map

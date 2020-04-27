@@ -76,8 +76,8 @@
   or nil from timeout and will the find the game to delay exporting and make sure"
   [id time-to-wait chan]
   (async/go
-    (alt!
-      (timeout time-to-wait) ([x] (ebot/export-game id))
+    (async/alt!
+      (async/timeout time-to-wait) ([x] (ebot/export-game id))
       chan (println "nothing to do pretty sure breh"))))
 
 (defn export-games
