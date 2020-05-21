@@ -141,7 +141,7 @@
   [team-name]
   (let [result (jdbc/execute! ds
                               [(str "select id from matchs where "
-                                    team-name " "
+                                    "'" team-name "'" " "
                                     "in (team_a_name, team_b_name)")]
                               {:builder-fn rs/as-unqualified-lower-maps})]
     (map :id result)))

@@ -116,7 +116,9 @@
 (defn participants
   "Returns all participants in the tournament."
   [tournament-id]
-  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/particpants")]
+  (let [url (str base-url "/organizer/v2/tournaments/" tournament-id "/participants")]
     (process-response
       (hclient/get url {:headers {:X-Api-Key toornament-api-key
-                                  :Authorization (oauth "participant")}}))))
+                                  :Authorization (oauth "participant")
+                                  ;;FIX TO GET ALL PARTICIPANTS, INCLUDING THOSE NOT IN THIS RANGE
+                                  :Range "participants=0-49"}}))))
