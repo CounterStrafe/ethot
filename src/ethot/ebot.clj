@@ -135,6 +135,17 @@
                               {:builder-fn rs/as-unqualified-lower-maps})]
     (map :id result)))
 
+(defn get-match-id-with-team
+  "Retrieves the games that have recently ended give the games we know already ended
+  TODO: see if query can take a list directly for the not-in"
+  [team-name]
+  (let [result (jdbc/execute! ds
+                              [(str "select id from matchs where "
+                                    "'" team-name "'" " "
+                                    "in (team_a_name, team_b_name)")]
+                              {:builder-fn rs/as-unqualified-lower-maps})]
+    (map :id result)))
+
 
 (defn set-map
   "Sets the map for the match."

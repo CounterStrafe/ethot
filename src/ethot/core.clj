@@ -4,6 +4,7 @@
             [discljord.events :as devent]
             [clojure.core.async :as async]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [clj-http.client :as hclient]
             [config.core :refer [env]]
             [ethot.ebot :as ebot]
@@ -74,21 +75,19 @@
 (defn await-game-status
   "waits for the channel to recieve a map of inforamiotn about the caller
   or nil from timeout and will the find the game to delay exporting and make sure"
-  [time-to-wait id]
-  (let [chan (async/timeout time-to-wait)]
-    (async/go
-      (if (nil? (async/<! chan))
-        (do
-          (ebot/export-game id)
-          (swap! state dissoc id))))
-    chan))
+  [id time-to-wait chan]
+  (println (str "testing chan passed to await-game-status" chan))
+  (async/go
+    (async/alt!
+      (async/timeout time-to-wait) ([x] (ebot/export-game id))
+      chan (println "nothing to do pretty sure breh"))))
 
 (defn export-games
   "Will find new games that have recently ended and create a new channel that
   will be notified when either the 5min timeout is reached to allow the next
   game in the bracket to be started OR a player reported suspicious activity
   and will stop the starting of the next game until manually restarted by a TO"
-  [state tournament-id stage-id]
+  [state tournament-id]
   (let [{:keys [games-awaiting-close close-game-time]} state
         ready-games (toornament/importable-matches tournament-id)
         identifier-ids (map #(str "'" tournament-id
@@ -98,10 +97,8 @@
                                   1
                                   "'") ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
-    (assoc state :games-awaiting-close
-           (reduce #(assoc %1 %2 (await-game-status close-game-time %2))
-                   {}
-                   (filter #(not (contains? games-awaiting-close %)) recently-ended)))))
+    (doseq [ebot-id (filter #(not (contains? games-awaiting-close (str (int %)))) recently-ended)]
+      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str (int ebot-id))])))))
 
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
@@ -121,6 +118,21 @@
                                          "\n\nTeams will alternate bans until one map remains. **"
                                          (get first-to-ban "name") "** will be the first to ban."
                                          "\nPlease use `!ban <mapname>` to ban a map."))))
+
+(defn get-team-of-discord-user
+  "given the discord username will find the team on toornament they belong to"
+  [discord-username]
+  (let [tournament-id (:tournament-id @state)
+        participants (toornament/participants tournament-id)]
+    ;;could be much cleaner with a postwalk, but this is more performant
+    (some (fn [m]
+            (when
+                (some
+                 #(= % discord-username)
+                 (map #(get-in % ["custom_fields" "discord_username"])
+                      (get m "lineup")))
+              (get m "name")))
+          participants)))
 
 (defn end-veto
   "Sets the map in eBot, notifies the Discord server channel that the veto has
@@ -177,6 +189,7 @@
     (ebot/login)
     (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
           stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
+      (swap! state assoc :tournament-id tournament-id)
       (loop []
         (println "Running")
         (doseq [match (unimported-matches tournament-id)]
@@ -195,10 +208,12 @@
                 server-id (ebot/get-available-server)]
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
-            (start-veto match-id ebot-match-id server-id team1 team2)))
+            (start-veto match-id ebot-match-id server-id team1 team2)
+            (when (not (contains? @state ebot-match-id))
+              (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan)))))
 
                                         ;exports here
-        (swap! state #(export-games % tournament-id stage-id))
+        (export-games @state tournament-id)
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
                 (toornament/stage-complete? tournament-id stage-id))
@@ -225,7 +240,7 @@
                                :content "A stage is already running.")
         (do
           (swap! state assoc :stage-running true)
-        ( run-stage tournament-name stage-name))))))
+          (run-stage tournament-name stage-name))))))
 
 (defmethod handle-event "!stop-stage"
   [event-type {:keys [channel-id]}]
@@ -235,7 +250,13 @@
 
 (defmethod handle-event "!report"
   [event-type {{username :username id :id disc :discriminator} :author}]
-  (println "todo"))
+  (let [team (get-team-of-discord-user (str username "#" disc))
+        match-ids (ebot/get-match-id-with-team team)
+        games-awaiting-close (:games-awaiting-close @state) 
+        chan (some #(get games-awaiting-close (str (int %))) match-ids)]
+    ;;todo add nil case for chan
+    (async/go
+      (async/>! chan "some-data"))))
 
 (defmethod handle-event "!ban"
   [event-type {{username :username id :id disc :discriminator} :author, :keys [channel-id content]}]
