@@ -1,20 +1,5 @@
 version: '3.7'
 services:
-  ethot:
-    image: counterstrafe/ethot
-    restart: "no"
-    networks:
-      - mysql
-      - ebot
-    environment:
-      MYSQL_HOST: 'mysql'
-      MYSQL_PORT: '3306'
-      MYSQL_DB: 'ebotv3'
-      MYSQL_USER: 'ebotv3'
-      MYSQL_PASS: 'ebotv3'
-    secrets:
-      - secrets.edn
-      
   ebot:
     image: hsfactory/ebot
     restart: always
@@ -30,12 +15,12 @@ services:
       - /opt/docker/ebot/logs:/ebot/logs
       - /opt/docker/ebot/demos:/ebot/demos
     environment:
-      EXTERNAL_IP: 'xxx.xxx.xxx.xxx'
+      EXTERNAL_IP: '${EXTERNAL_IP}'
       MYSQL_HOST: 'mysql'
       MYSQL_PORT: '3306'
       MYSQL_DB: 'ebotv3'
       MYSQL_USER: 'ebotv3'
-      MYSQL_PASS: 'ebotv3'
+      MYSQL_PASS: '${MYSQL_PASS}'
       LO3_METHOD: 'restart'
       KO3_METHOD: 'restart'
       DEMO_DOWNLOAD: 'true'
@@ -57,7 +42,7 @@ services:
       - /opt/docker/ebot/demos:/opt/ebot/demos
       - /opt/docker/ebot/logs:/opt/ebot/logs
     environment:
-      EBOT_IP: 'xxx.xxx.xxx.xxx'
+      EBOT_IP: '${EBOT_IP}'
       EBOT_PORT: '12360'
       EBOT_ADMIN_USER: 'admin'
       EBOT_ADMIN_PASS: 'password'
@@ -69,9 +54,9 @@ services:
       MYSQL_PASS: 'ebotv3'
       DEMO_DOWNLOAD: 'true'
       DEFAULT_RULES: 'esl5on5'
-      TOORNAMENT_ID: ''
-      TOORNAMENT_SECRET: ''
-      TOORNAMENT_API_KEY: ''
+      TOORNAMENT_ID: '${TOORNAMENT_ID}'
+      TOORNAMENT_SECRET: '${TOORNAMENT_SECRET}'
+      TOORNAMENT_API_KEY: '${TOORNAMENT_API_KEY}'
       TOORNAMENT_PLUGIN_KEY: ''
 
   mysql:
@@ -93,10 +78,6 @@ services:
       - MYSQL_ROOT_PASSWORD=MyAwesomePassword
       - MYSQL_ROOT_HOST=%
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
-
-secrets:
-  secrets.edn:
-    file: ./secrets.edn
 
 networks:
   mysql:

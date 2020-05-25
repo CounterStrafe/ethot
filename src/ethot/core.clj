@@ -7,6 +7,7 @@
             [clojure.walk :as walk]
             [clj-http.client :as hclient]
             [config.core :refer [env]]
+            [ethot.db :as db]
             [ethot.ebot :as ebot]
             [ethot.toornament :as toornament])
   (:gen-class))
@@ -103,16 +104,11 @@
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
   veto has started."
-  [match-id ebot-match-id server-id team1 team2]
+  [tournament-id match-id ebot-match-id server-id team1 team2]
   (let [discord-channel-id (get discord-server-channel-ids (- server-id 1))
         team1-name (get team1 "name")
         team2-name (get team2 "name")
-        veto-lobby {:ebot-match-id ebot-match-id
-                    :teams (shuffle (list team1 team2))
-                    :maps-left map-pool
-                    :discord-channel-id discord-channel-id}
-        first-to-ban (first (:teams veto-lobby))]
-    (swap! state assoc-in [:veto-lobbies match-id] veto-lobby)
+        first-to-ban (db/create-veto-lobby match-id tournament-id ebot-match-id team1 team2 discord-channel-id)]
     (dmess/create-message! (:messaging @state) discord-channel-id
                            :content (str "The map pool is:\n" (str/join "\n" map-pool)
                                          "\n\nTeams will alternate bans until one map remains. **"
@@ -137,22 +133,21 @@
 (defn end-veto
   "Sets the map in eBot, notifies the Discord server channel that the veto has
   ended, and DM the server creds to the players."
-  [match-id veto-lobby banned-map map-name]
+  [match-id veto-lobby banned-map map-name ban-team team1 team2]
   (let [channel-id (:discord-channel-id veto-lobby)
-        teams (:teams veto-lobby)
-        ban-team (first teams)
+        teams (list team1 team2)
         team1-name (get (first teams) "name")
         team2-name (get (second teams) "name")
         discord-usernames (flatten (map get-team-discord-usernames teams))
         discord-user-ids (map get-discord-user-id discord-usernames)
-        ebot-match-id (:ebot-match-id veto-lobby)
+        ebot-match-id (:ebot_match_id veto-lobby)
         {:keys [ip config_password]} (ebot/get-server-creds ebot-match-id)]
-    (ebot/set-map (:ebot-match-id veto-lobby) map-name)
-    (swap! state update :veto-lobbies dissoc match-id)
+    (ebot/set-map ebot-match-id map-name)
+    (db/end-veto match-id)
     (dmess/create-message! (:messaging @state) channel-id
-                           :content (str (get ban-team "name") " banned "
-                                         banned-map ". **" map-name
-                                         "** will be played."))
+                            :content (str (get ban-team "name") " banned "
+                                          banned-map ". **" map-name
+                                          "** will be played."))
     (doseq [discord-id discord-user-ids]
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
         (dmess/create-message! (:messaging @state) channel-id
@@ -160,26 +155,33 @@
                                              "\n" "`connect " ip
                                              "; password " config_password ";`"))))))
 
+(defn get-maps-left
+  "Returns the maps left in a veto lobby."
+  [veto-lobby]
+  (filter (fn [key]
+            (and (contains? (set map-pool) key)
+                 (= (get veto-lobby (keyword key)) "0")))
+          (map name (keys veto-lobby))))
+
 (defn ban-map
   "Removes the map from the veto lobby's remaining maps, updates the ban order,
   and updates the server's Discord channel."
-  [match-id veto-lobby map-name]
-  (let [maps-left (filter #(not (= map-name %)) (:maps-left veto-lobby))
-        channel-id (:discord-channel-id veto-lobby)
-        teams (:teams veto-lobby)
-        ban-team (first teams)
-        next-ban-team (second teams)
-        new-veto-lobby (assoc veto-lobby :maps-left maps-left)
-        new-veto-lobby (assoc new-veto-lobby :teams (reverse teams))]
+  [veto-lobby map-name team1 team2]
+  (let [maps-left (filter #(not (= map-name %)) (get-maps-left veto-lobby))
+        match-id (:match_id veto-lobby)
+        channel-id (:discord_channel_id veto-lobby)
+        next-ban-id (:next_ban_id veto-lobby)
+        [ban-team next-ban-team] (if (= next-ban-id (get team1 "id"))
+                                   [team1 team2]
+                                   [team2 team1])]
+    (db/ban-map match-id map-name (get next-ban-team "id"))
     (if (= (count maps-left) 1)
-      (end-veto match-id veto-lobby map-name (first maps-left))
-      (do
-        (swap! state assoc-in [:veto-lobbies match-id] new-veto-lobby)
-        (dmess/create-message! (:messaging @state) channel-id
-                               :content (str (get ban-team "name") " banned "
-                                             map-name ". **" (get next-ban-team "name")
-                                             "** will ban next. Maps remaining:\n"
-                                             (str/join "\n" maps-left)))))))
+      (end-veto match-id veto-lobby map-name (first maps-left) ban-team team1 team2)
+      (dmess/create-message! (:messaging @state) channel-id
+                              :content (str (get ban-team "name") " banned "
+                                            map-name ". **" (get next-ban-team "name")
+                                            "** will ban next. Maps remaining:\n"
+                                            (str/join "\n" maps-left))))))
 
 (defn run-stage
   "Logs into eBot and continuously imports and exports all available games
@@ -208,7 +210,7 @@
                 server-id (ebot/get-available-server)]
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
-            (start-veto match-id ebot-match-id server-id team1 team2)
+            (start-veto tournament-id match-id ebot-match-id server-id team1 team2)
             (when (not (contains? @state ebot-match-id))
               (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan)))))
 
@@ -252,7 +254,7 @@
   [event-type {{username :username id :id disc :discriminator} :author}]
   (let [team (get-team-of-discord-user (str username "#" disc))
         match-ids (ebot/get-match-id-with-team team)
-        games-awaiting-close (:games-awaiting-close @state) 
+        games-awaiting-close (:games-awaiting-close @state)
         chan (some #(get games-awaiting-close (str (int %))) match-ids)]
     ;;todo add nil case for chan
     (async/go
@@ -262,12 +264,16 @@
   [event-type {{username :username id :id disc :discriminator} :author, :keys [channel-id content]}]
   (let [input-rest (rest (str/split content #" "))
         map-name (first input-rest)
-        veto-lobbies (into [] (:veto-lobbies @state))
-        [match-id veto-lobby] (some #(when (= (:discord-channel-id (second %)) channel-id) %) veto-lobbies)
-        teams (:teams veto-lobby)
-        discord-usernames [(get-team-discord-usernames (first teams))
-                           (get-team-discord-usernames (second teams))]
-        maps-left (:maps-left veto-lobby)]
+        veto-lobby (db/get-veto-lobby channel-id)
+        tournament-id (:tournament_id veto-lobby)
+        team1 (toornament/participant tournament-id (:team1_id veto-lobby))
+        team2 (toornament/participant tournament-id (:team2_id veto-lobby))
+        discord-usernames [(get-team-discord-usernames team1)
+                           (get-team-discord-usernames team2)]
+        teams {(get team1 "id") 0
+               (get team2 "id") 1}
+        next-ban-index (get teams (:next_ban_id veto-lobby))
+        maps-left (get-maps-left veto-lobby)]
     (cond
       (nil? veto-lobby)
       (dmess/create-message! (:messaging @state) channel-id
@@ -279,7 +285,7 @@
                              :content (str (format-discord-mentions [id])
                                            " you are not a member of either team."))
 
-      (not (contains? (set (first discord-usernames))
+      (not (contains? (set (nth discord-usernames next-ban-index))
                       (str username "#" disc)))
       (dmess/create-message! (:messaging @state) channel-id
                              :content (str (format-discord-mentions [id])
@@ -296,7 +302,7 @@
                                            " the remaining maps are:\n" (str/join "\n" maps-left)))
 
       :else
-      (ban-map match-id veto-lobby map-name))))
+      (ban-map veto-lobby map-name team1 team2))))
 
 (defn -main
   [& args]
