@@ -65,14 +65,14 @@
   "Checks if a match is delayed."
   [match-id]
   (not= (:c (jdbc/execute-one! ds ["select count(*) as c
-                          from delays
-                          where match_id = ?" match-id]
-                     {:builder-fn rs/as-unqualified-lower-maps}))
+                                    from delays
+                                    where match_id = ?" match-id]
+                               {:builder-fn rs/as-unqualified-lower-maps}))
         0))
 
 (defn resume-match
   "Removes a match from the delays table."
   [match-id]
   (jdbc/execute-one! ds ["delete from delays
-                                    where match_id = ?" match-id]
-                               {:builder-fn rs/as-unqualified-lower-maps}))
+                          where match_id = ?" match-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
