@@ -10,5 +10,6 @@ test.html
 *.class
 /.lein-*
 /.nrepl-port
+.env
 .hgignore
 .hg/
