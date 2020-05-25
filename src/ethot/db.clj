@@ -4,8 +4,6 @@
             [next.jdbc.result-set :as rs])
   (:gen-class))
 
-(def state (atom {:cookies {}}))
-
 (def db-name "ethot")
 (def db-host (:mysql-host env))
 (def db-user (:mysql-user env))
@@ -55,3 +53,26 @@
                           set active = 0
                           where match_id = ?" match-id]
                      {:builder-fn rs/as-unqualified-lower-maps}))
+
+(defn delay-match
+  "Adds a match to the delays table."
+  [match-id]
+  (jdbc/execute-one! ds ["insert into delays (match_id)
+                          values (?)" match-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
+
+(defn match-delayed?
+  "Checks if a match is delayed."
+  [match-id]
+  (not= (:c (jdbc/execute-one! ds ["select count(*) as c
+                          from delays
+                          where match_id = ?" match-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
+        0))
+
+(defn resume-match
+  "Removes a match from the delays table."
+  [match-id]
+  (jdbc/execute-one! ds ["delete from delays
+                                    where match_id = ?" match-id]
+                               {:builder-fn rs/as-unqualified-lower-maps}))
