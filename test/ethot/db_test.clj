@@ -72,3 +72,18 @@
 (deftest no-veto-lobby-test
   (testing "get-veto-lobby nil."
     (is (nil? (get-veto-lobby "123")))))
+
+(deftest delay-match-test
+  (testing "match-delayed? false."
+  (let [match-id "1234567890123456789"]
+    (is (false? (match-delayed? match-id)))))
+
+  (testing "delay-match match-delayed?."
+    (let [match-id "1234567890123456789"
+          result (delay-match match-id)]
+      (is (true? (match-delayed? match-id)))))
+
+  (testing "resume-match match-delayed?."
+    (let [match-id "1234567890123456789"
+          result (resume-match match-id)]
+      (is (false? (match-delayed? match-id))))))

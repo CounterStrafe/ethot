@@ -24,6 +24,11 @@ CREATE TABLE IF NOT EXISTS `veto` (
   PRIMARY KEY (`match_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
+CREATE TABLE IF NOT EXISTS `delays` (
+  `match_id` varchar(200) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+  PRIMARY KEY (`match_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
 GRANT ALL PRIVILEGES ON ethot.* TO 'ebotv3';
 
 COMMIT;

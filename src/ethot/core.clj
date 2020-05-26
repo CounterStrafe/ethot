@@ -70,7 +70,8 @@
 (defn unimported-matches
   "Returns the matches that can and have not been imported yet."
   [tournament-id]
-  (filter #(not (ebot/imported? tournament-id (get % "id") 1))
+  (filter #(and (not (ebot/imported? tournament-id (get % "id") 1))
+                (not (db/match-delayed? (get % "id"))))
           (toornament/importable-matches tournament-id)))
 
 (defn await-game-status
@@ -304,6 +305,32 @@
       :else
       (ban-map veto-lobby map-name team1 team2))))
 
+(defmethod handle-event "!delay"
+  [event-type {:keys [channel-id content]}]
+  (when (= channel-id discord-admin-channel-id)
+    (let [input-rest (rest (str/split content #" "))
+          match-id (first input-rest)]
+      (if (db/match-delayed? match-id)
+        (dmess/create-message! (:messaging @state) channel-id
+                                :content (str match-id " is already delayed."))
+        (do
+          (db/delay-match match-id)
+          (dmess/create-message! (:messaging @state) channel-id
+                                  :content (str match-id " is now delayed.")))))))
+
+(defmethod handle-event "!resume"
+  [event-type {:keys [channel-id content]}]
+  (when (= channel-id discord-admin-channel-id)
+    (let [input-rest (rest (str/split content #" "))
+          match-id (first input-rest)]
+      (if (not (db/match-delayed? match-id))
+        (dmess/create-message! (:messaging @state) channel-id
+                                :content (str match-id " is not delayed."))
+        (do
+          (db/resume-match match-id)
+          (dmess/create-message! (:messaging @state) channel-id
+                                  :content (str match-id " is now resumed.")))))))
+
 (defn -main
   [& args]
   (let [event-ch (async/chan 100)
@@ -313,7 +340,6 @@
                     :event event-ch
                     :messaging messaging-ch
                     :stage-running false
-                    :veto-lobbies {}
                     :discord-user-ids {}
                     :games-awaiting-close {}
                     :close-game-time 60000}]
