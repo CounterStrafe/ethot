@@ -42,18 +42,21 @@ services:
       - /opt/docker/ebot/demos:/opt/ebot/demos
       - /opt/docker/ebot/logs:/opt/ebot/logs
     environment:
-      EBOT_IP: '${EBOT_IP}'
-      EBOT_PORT: '12360'
-      EBOT_ADMIN_USER: 'admin'
-      EBOT_ADMIN_PASS: 'password'
-      EBOT_ADMIN_MAIL: ''
       MYSQL_HOST: 'mysql'
       MYSQL_PORT: '3306'
       MYSQL_DB: 'ebotv3'
       MYSQL_USER: 'ebotv3'
-      MYSQL_PASS: 'ebotv3'
+      MYSQL_PASS: '${MYSQL_PASS}'
+      EBOT_ADMIN_USER: 'admin'
+      EBOT_ADMIN_PASS: '${EBOT_ADMIN_PASS}'
+      EBOT_ADMIN_MAIL: ''
+      DEFAULT_MAX_ROUND: '8'
+      DEFAULT_RULES: 'counterstrafe_wingman'
+      DEFAULT_OVERTIME_STARTMONEY: '10000'
       DEMO_DOWNLOAD: 'true'
-      DEFAULT_RULES: 'esl5on5'
+      EBOT_PORT: '12360'
+      EBOT_IP: '${EXTERNAL_IP}'
+      EBOT_PORT: '12360'
       TOORNAMENT_ID: '${TOORNAMENT_ID}'
       TOORNAMENT_SECRET: '${TOORNAMENT_SECRET}'
       TOORNAMENT_API_KEY: '${TOORNAMENT_API_KEY}'
@@ -74,10 +77,14 @@ services:
     environment:
       - MYSQL_DATABASE=ebotv3
       - MYSQL_USER=ebotv3
-      - MYSQL_PASSWORD=ebotv3
-      - MYSQL_ROOT_PASSWORD=MyAwesomePassword
+      - MYSQL_PASSWORD=${MYSQL_PASS}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASS}
       - MYSQL_ROOT_HOST=%
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION"
+
+secrets:
+  secrets.edn:
+    file: ./secrets.edn
 
 networks:
   mysql:
