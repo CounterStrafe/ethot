@@ -54,7 +54,7 @@ services:
       DEFAULT_RULES: 'counterstrafe_wingman'
       DEFAULT_OVERTIME_STARTMONEY: '10000'
       DEMO_DOWNLOAD: 'true'
-      EBOT_PORT: '12360'
+      EBOT_PROTO: 'http://'
       EBOT_IP: '${EBOT_IP}'
       EBOT_PORT: '12360'
       TOORNAMENT_ID: '${TOORNAMENT_ID}'
