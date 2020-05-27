@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS `delays` (
   PRIMARY KEY (`match_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
+CREATE TABLE IF NOT EXISTS `reports` (
+  `ebot_match_id` int(255) NOT NULL,
+  `report_status` int(255) NOT NULL,
+  PRIMARY KEY (`ebot_match_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
 GRANT ALL PRIVILEGES ON ethot.* TO 'ebotv3';
 
 COMMIT;
