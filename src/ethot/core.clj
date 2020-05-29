@@ -135,7 +135,7 @@
   "Sets the map in eBot, notifies the Discord server channel that the veto has
   ended, and DM the server creds to the players."
   [match-id veto-lobby banned-map map-name ban-team team1 team2]
-  (let [channel-id (:discord-channel-id veto-lobby)
+  (let [channel-id (:discord_channel_id veto-lobby)
         teams (list team1 team2)
         team1-name (get (first teams) "name")
         team2-name (get (second teams) "name")
@@ -144,6 +144,7 @@
         ebot-match-id (:ebot_match_id veto-lobby)
         {:keys [ip config_password]} (ebot/get-server-creds ebot-match-id)]
     (ebot/set-map ebot-match-id map-name)
+    (ebot/start-match ebot-match-id)
     (db/end-veto match-id)
     (dmess/create-message! (:messaging @state) channel-id
                             :content (str (get ban-team "name") " banned "

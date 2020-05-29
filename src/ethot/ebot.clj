@@ -96,6 +96,8 @@
   (let [url (str base-url "/admin.php/matchs/start/server")]
     (process-response (hclient/post url {:connection-manager cm
                                          :cookies (:cookies @state)
+                                         ; Don't throw exceptions because this will return a 500
+                                         :throw-exceptions false
                                          :form-params
                                            {"match_id" ebot-match-id}}))))
 
