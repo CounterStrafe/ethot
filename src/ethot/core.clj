@@ -102,10 +102,10 @@
                                   1
                                   "'") ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
-    (doseq [ebot-id (filter #(and (contains? games-awaiting-close (str (int %)))
-                                  (not (db/report-timer-started? (int %)))) recently-ended)]
-      (db/set-report-timer (int ebot-id))
-      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str (int ebot-id))])))))
+    (doseq [ebot-id (filter #(and (contains? games-awaiting-close (str %))
+                                  (not (db/report-timer-started? %))) recently-ended)]
+      (db/set-report-timer ebot-id)
+      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str ebot-id)])))))
 
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
@@ -220,17 +220,18 @@
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto tournament-id match-id ebot-match-id server-id team1 team2)
-
-            ;;todo check ebot-match-id type
-            (when (or (not (contains? @state ebot-match-id))
-                      (db/reported? ebot-match-idp))
+            (when (not (contains? (:games-awaiting-close @state) ebot-match-id))
               (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan))
               (cond
                 (not (db/in-reports-table? ebot-match-id))
                 (db/add-unreported ebot-match-id)
 
-                (db/report-timer-started? ebot-match-id)
-                (db/set-unreported ebot-match-id)))))
+                ;; we will reset the timer, since the game will
+                ;; still be exportable on through toornament state
+                (db/in-timer? ebot-match-id)
+                (do
+                  (println "recovered game that was in timer")
+                  (db/set-unreported ebot-match-id))))))
 
                                         ;exports here
         (export-games @state tournament-id)
@@ -274,6 +275,10 @@
         match-ids (ebot/get-match-id-with-team team)
         games-awaiting-close (:games-awaiting-close @state)
         chan (some #(get games-awaiting-close (str (int %))) match-ids)]
+    (println team)
+    (println match-ids)
+    (println games-awaiting-close)
+    (println chan)
     ;;todo add nil case for chan
     (async/go
       (async/>! chan "some-data"))))

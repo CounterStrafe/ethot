@@ -143,7 +143,7 @@
                                     (str/join "," exportable-identifier-ids) ") "
                                     "and status >= 13")]
                               {:builder-fn rs/as-unqualified-lower-maps})]
-    (map :id result)))
+    (map #(int (:id %)) result)))
 
 (defn get-match-id-with-team
   "Retrieves the games that have recently ended give the games we know already ended

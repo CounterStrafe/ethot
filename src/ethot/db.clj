@@ -116,38 +116,33 @@
                           where ebot_match_id = ?" match-id]
                      {:builder-fn rs/as-unqualified-lower-maps}))
 
+(defn report-status-value
+  [match-id]
+  (:report_status
+   (jdbc/execute-one! ds ["select *
+                           from reports
+                           where ebot_match_id = ?" match-id]
+                      {:builder-fn rs/as-unqualified-lower-maps})))
+
 (defn unreported?
   "See if the match-id is set as unreported in the reports table"
   [match-id]
-  (= (:report_status
-      (first
-       (jdbc/execute-one! ds ["select *
-                               from reports
-                               where ebot_match_id = ?" match-id]
-                          {:builder-fn rs/as-unqualified-lower-maps})))
-     0))
+  (= (report-status-value match-id) 0))
 
 (defn report-timer-started?
   "See if the match-id is marked as timer-started in the reports table"
   [match-id]
-  (= (:report_status
-      (first
-       (jdbc/execute-one! ds ["select *
-                               from reports
-                               where ebot_match_id = ?" match-id]
-                          {:builder-fn rs/as-unqualified-lower-maps})))
-     1))
+  (> (report-status-value match-id) 0))
+
+(defn in-timer?
+  "See if the match-id is marked as timer-started in the reports table"
+  [match-id]
+  (= (report-status-value match-id) 1))
 
 (defn reported?
   "See if the match-id is marked as reported in the reports table"
   [match-id]
-  (= (:report_status
-      (first
-       (jdbc/execute-one! ds ["select *
-                               from reports
-                               where ebot_match_id = ?" match-id]
-                          {:builder-fn rs/as-unqualified-lower-maps})))
-     2))
+  (= (report-status-value match-id) 2))
 
 (defn in-reports-table?
   "See if the match-id is in the reports table"
