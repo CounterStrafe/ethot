@@ -96,6 +96,8 @@
   (let [url (str base-url "/admin.php/matchs/start/server")]
     (process-response (hclient/post url {:connection-manager cm
                                          :cookies (:cookies @state)
+                                         ; Don't throw exceptions because this will return a 500
+                                         :throw-exceptions false
                                          :form-params
                                            {"match_id" ebot-match-id}}))))
 
@@ -122,6 +124,14 @@
   "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
   [ebot-match-id]
   (jdbc/execute-one! ds ["select ip, config_password from matchs where id = ?" ebot-match-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
+
+(defn set-match-password
+  "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
+  [ebot-match-id password]
+  (jdbc/execute-one! ds ["update matchs
+                          set config_password = ?
+                          where id = ?" password ebot-match-id]
                      {:builder-fn rs/as-unqualified-lower-maps}))
 
 (defn get-newly-ended-games

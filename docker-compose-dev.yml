@@ -3,9 +3,6 @@ services:
   ebot:
     image: hsfactory/ebot
     restart: always
-    networks:
-      - mysql
-      - ebot
     ports:
       - "12360:12360"
       - "12361:12361"
@@ -34,8 +31,6 @@ services:
   ebotweb:
     image: counterstrafe/ebotweb
     restart: always
-    networks:
-      - mysql
     ports:
       - "80:80"
     volumes:
@@ -54,7 +49,7 @@ services:
       DEFAULT_RULES: 'counterstrafe_wingman'
       DEFAULT_OVERTIME_STARTMONEY: '10000'
       DEMO_DOWNLOAD: 'true'
-      EBOT_PORT: '12360'
+      EBOT_PROTO: 'http://'
       EBOT_IP: '${EBOT_IP}'
       EBOT_PORT: '12360'
       TOORNAMENT_ID: '${TOORNAMENT_ID}'
@@ -65,8 +60,6 @@ services:
   mysql:
     image: mysql:5.7
     restart: always
-    networks:
-      - mysql
     volumes:
       - /opt/docker/ebot/mysql:/var/lib/mysql
       - ./ethot-db/ethot.sql:/docker-entrypoint-initdb.d/ethot.sql
@@ -85,7 +78,3 @@ services:
 secrets:
   secrets.edn:
     file: ./secrets.edn
-
-networks:
-  mysql:
-  ebot:

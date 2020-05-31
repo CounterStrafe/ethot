@@ -19,6 +19,7 @@
 (def discord-guild-id (:discord-guild-id env))
 (def discord-server-channel-ids (:discord-server-channel-ids env))
 (def discord-token (:discord-token env))
+(def game-server-password (:game-server-password env))
 (def map-pool (:map-pool env))
 
 (defn gen-discord-user-map
@@ -139,7 +140,7 @@
   "Sets the map in eBot, notifies the Discord server channel that the veto has
   ended, and DM the server creds to the players."
   [match-id veto-lobby banned-map map-name ban-team team1 team2]
-  (let [channel-id (:discord-channel-id veto-lobby)
+  (let [channel-id (:discord_channel_id veto-lobby)
         teams (list team1 team2)
         team1-name (get (first teams) "name")
         team2-name (get (second teams) "name")
@@ -148,6 +149,7 @@
         ebot-match-id (:ebot_match_id veto-lobby)
         {:keys [ip config_password]} (ebot/get-server-creds ebot-match-id)]
     (ebot/set-map ebot-match-id map-name)
+    (ebot/start-match ebot-match-id)
     (db/end-veto match-id)
     (dmess/create-message! (:messaging @state) channel-id
                             :content (str (get ban-team "name") " banned "
@@ -157,6 +159,7 @@
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str team1-name " vs " team2-name " is now ready!"
+                                             "\nsteam://connect/" ip "/" config_password
                                              "\n" "`connect " ip
                                              "; password " config_password ";`"))))))
 
@@ -213,6 +216,7 @@
                 ; that can be played at one time. There is no logic for
                 ; prioritising games earlier in the bracket.
                 server-id (ebot/get-available-server)]
+            (ebot/set-match-password ebot-match-id game-server-password)
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto tournament-id match-id ebot-match-id server-id team1 team2)
