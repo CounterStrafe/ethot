@@ -82,8 +82,10 @@
   (println (str "testing chan passed to await-game-status" chan))
   (async/go
     (async/alt!
-      (async/timeout time-to-wait) ([x] (ebot/export-game id))
-      chan (println "nothing to do pretty sure breh"))))
+      (async/timeout time-to-wait) ([x]
+                                    (ebot/export-game id)
+                                    (db/set-exported id))
+      chan ([x] (db/set-reported id)))))
 
 (defn export-games
   "Will find new games that have recently ended and create a new channel that
@@ -100,8 +102,10 @@
                                   1
                                   "'") ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
-    (doseq [ebot-id (filter #(not (contains? games-awaiting-close (str (int %)))) recently-ended)]
-      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str (int ebot-id))])))))
+    (doseq [ebot-id (filter #(and (contains? games-awaiting-close (str %))
+                                  (not (db/report-timer-started? %))) recently-ended)]
+      (db/set-report-timer ebot-id)
+      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str ebot-id)])))))
 
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
@@ -216,8 +220,16 @@
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto tournament-id match-id ebot-match-id server-id team1 team2)
-            (when (not (contains? @state ebot-match-id))
-              (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan)))))
+            (when (not (contains? (:games-awaiting-close @state) ebot-match-id))
+              (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan))
+              (cond
+                (not (db/in-reports-table? ebot-match-id))
+                (db/add-unreported ebot-match-id)
+
+                ;; we will reset the timer, since the game will
+                ;; still be exportable on through toornament state
+                (db/in-timer? ebot-match-id)
+                (db/set-unreported ebot-match-id)))))
 
                                         ;exports here
         (export-games @state tournament-id)
