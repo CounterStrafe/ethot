@@ -19,6 +19,7 @@
 (def discord-guild-id (:discord-guild-id env))
 (def discord-server-channel-ids (:discord-server-channel-ids env))
 (def discord-token (:discord-token env))
+(def game-server-password (:game-server-password env))
 (def map-pool (:map-pool env))
 
 (defn gen-discord-user-map
@@ -154,6 +155,7 @@
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str team1-name " vs " team2-name " is now ready!"
+                                             "\nsteam://connect/" ip "/" config_password
                                              "\n" "`connect " ip
                                              "; password " config_password ";`"))))))
 
@@ -210,6 +212,7 @@
                 ; that can be played at one time. There is no logic for
                 ; prioritising games earlier in the bracket.
                 server-id (ebot/get-available-server)]
+            (ebot/set-match-password ebot-match-id game-server-password)
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto tournament-id match-id ebot-match-id server-id team1 team2)

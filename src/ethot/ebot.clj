@@ -126,6 +126,14 @@
   (jdbc/execute-one! ds ["select ip, config_password from matchs where id = ?" ebot-match-id]
                      {:builder-fn rs/as-unqualified-lower-maps}))
 
+(defn set-match-password
+  "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
+  [ebot-match-id password]
+  (jdbc/execute-one! ds ["update matchs
+                          set config_password = ?
+                          where id = ?" password ebot-match-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
+
 (defn get-newly-ended-games
   "Retrieves the games that have recently ended give the games we know already ended
   TODO: see if query can take a list directly for the not-in"
