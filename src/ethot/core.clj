@@ -229,9 +229,7 @@
                 ;; we will reset the timer, since the game will
                 ;; still be exportable on through toornament state
                 (db/in-timer? ebot-match-id)
-                (do
-                  (println "recovered game that was in timer")
-                  (db/set-unreported ebot-match-id))))))
+                (db/set-unreported ebot-match-id)))))
 
                                         ;exports here
         (export-games @state tournament-id)
@@ -275,10 +273,6 @@
         match-ids (ebot/get-match-id-with-team team)
         games-awaiting-close (:games-awaiting-close @state)
         chan (some #(get games-awaiting-close (str (int %))) match-ids)]
-    (println team)
-    (println match-ids)
-    (println games-awaiting-close)
-    (println chan)
     ;;todo add nil case for chan
     (async/go
       (async/>! chan "some-data"))))
