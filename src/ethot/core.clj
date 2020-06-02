@@ -257,7 +257,7 @@
     (swap! state assoc :stage-running false)))
 
 (defmethod handle-event "!report"
-  [event-type {{username :username id :id disc :discriminator} :author}]
+  [event-type {{username :username id :id disc :discriminator} :author, :keys [channel-id]}]
   (let [team (get-team-of-discord-user (str username "#" disc))
         match-ids (ebot/get-match-id-with-team team)
         games-awaiting-close (:games-awaiting-close @state)
