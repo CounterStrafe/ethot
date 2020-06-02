@@ -194,11 +194,10 @@
 (defn run-stage
   "Logs into eBot and continuously imports and exports all available games
   every 30 seconds."
-  [tournament-name stage-name]
+  [tournament-id stage-name]
   (async/go
     (ebot/login)
-    (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
-          stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
+    (let [stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
       (swap! state assoc :tournament-id tournament-id)
       (loop []
         (println "Running")
@@ -231,7 +230,7 @@
                 (db/in-timer? ebot-match-id)
                 (db/set-unreported ebot-match-id)))))
 
-                                        ;exports here
+        ; exports here
         (export-games @state tournament-id)
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
@@ -252,14 +251,14 @@
 (defmethod handle-event "!run-stage"
   [event-type {:keys [content channel-id]}]
   (when (= channel-id discord-admin-channel-id)
-    (let [[tournament-name stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
+    (let [[tournament-id stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
       (println "Received run")
       (if (:stage-running @state)
         (dmess/create-message! (:messaging @state) channel-id
                                :content "A stage is already running.")
         (do
           (swap! state assoc :stage-running true)
-          (run-stage tournament-name stage-name))))))
+          (run-stage tournament-id stage-name))))))
 
 (defmethod handle-event "!stop-stage"
   [event-type {:keys [channel-id]}]
