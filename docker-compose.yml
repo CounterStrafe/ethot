@@ -13,7 +13,7 @@ services:
       - secrets.edn
 
   ebot:
-    image: hsfactory/ebot
+    image: counterstrafe/ebot:1.0.0
     restart: always
     ports:
       - "12360:12360"
@@ -36,6 +36,7 @@ services:
       REMIND_RECORD: 'false'
       DAMAGE_REPORT: 'true'
       DELAY_READY: 'false'
+      PAUSE_METHOD: 'none'
       NODE_STARTUP_METHOD: 'node'
       USE_DELAY_END_RECORD: 'true'
       TOORNAMENT_PLUGIN_KEY: ''
@@ -92,4 +93,3 @@ services:
 secrets:
   secrets.edn:
     file: ./secrets.edn
-

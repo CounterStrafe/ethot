@@ -21,7 +21,7 @@
 (def db-host (:mysql-host env))
 (def db-user (:mysql-user env))
 (def db-password (:mysql-pass env))
-(def server-id-range (apply range (:server-id-range env)))
+(def server-id-range (set (apply range (:server-id-range env))))
 
 (def ds (jdbc/get-datasource
          {:dbtype "mysql"
@@ -111,14 +111,23 @@
             :password db-password}
         ds (jdbc/get-datasource db)
         ; Match statuses below 13 indicate a game is either running or not started yet
-        unavailable-servers (jdbc/execute-one! ds ["select distinct s.id
-                                                    from servers s
-                                                    left join matchs m
-                                                    on s.id = m.server_id
-                                                    where m.status < 13
-                                                    order by s.id asc"]
-                                               {:builder-fn rs/as-unqualified-lower-maps})]
-        (first (apply sorted-set (clojure.set/difference server-id-range (set (:id unavailable-servers)))))))
+        result (jdbc/execute-one! ds ["select distinct s.id
+                                       from servers s
+                                       left join matchs m
+                                       on s.id = m.server_id
+                                       where m.status < 13
+                                       order by s.id asc"]
+                                  {:builder-fn rs/as-unqualified-lower-maps})
+        unavailable-servers (:id result)]
+        (cond
+          (nil? unavailable-servers)
+          (first (apply sorted-set (clojure.set/difference server-id-range (set unavailable-servers))))
+
+          (seq? unavailable-servers)
+          (first (apply sorted-set (clojure.set/difference server-id-range (set unavailable-servers))))
+
+          :else
+          (first (apply sorted-set (clojure.set/difference server-id-range (set (list unavailable-servers))))))))
 
 (defn get-server-creds
   "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
@@ -138,12 +147,14 @@
   "Retrieves the games that have recently ended give the games we know already ended
   TODO: see if query can take a list directly for the not-in"
   [exportable-identifier-ids]
-  (let [result (jdbc/execute! ds
-                              [(str "select id from matchs where identifier_id in ("
-                                    (str/join "," exportable-identifier-ids) ") "
-                                    "and status >= 13")]
-                              {:builder-fn rs/as-unqualified-lower-maps})]
-    (map :id result)))
+  (if (empty? exportable-identifier-ids)
+    '()
+    (let [result (jdbc/execute! ds
+                                [(str "select id from matchs where identifier_id in ("
+                                      (str/join "," exportable-identifier-ids) ") "
+                                      "and status >= 13")]
+                                {:builder-fn rs/as-unqualified-lower-maps})]
+      (map #(int (:id %)) result))))
 
 (defn get-match-id-with-team
   "Retrieves the games that have recently ended give the games we know already ended

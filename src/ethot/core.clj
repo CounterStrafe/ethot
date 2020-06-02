@@ -20,6 +20,7 @@
 (def discord-server-channel-ids (:discord-server-channel-ids env))
 (def discord-token (:discord-token env))
 (def game-server-password (:game-server-password env))
+(def import-blacklist (:import-blacklist env))
 (def map-pool (:map-pool env))
 (def report-timeout (:report-timeout env))
 
@@ -73,7 +74,8 @@
   "Returns the matches that can and have not been imported yet."
   [tournament-id]
   (filter #(and (not (ebot/imported? tournament-id (get % "id") 1))
-                (not (db/match-delayed? (get % "id"))))
+                (not (db/match-delayed? (get % "id")))
+                (not (contains? import-blacklist (get % "id"))))
           (toornament/importable-matches tournament-id)))
 
 (defn await-game-status
@@ -83,8 +85,10 @@
   (println (str "testing chan passed to await-game-status" chan))
   (async/go
     (async/alt!
-      (async/timeout time-to-wait) ([x] (ebot/export-game id))
-      chan (println "nothing to do pretty sure breh"))))
+      (async/timeout time-to-wait) ([x]
+                                    (ebot/export-game id)
+                                    (db/set-exported id))
+      chan ([x] (db/set-reported id)))))
 
 (defn export-games
   "Will find new games that have recently ended and create a new channel that
@@ -101,8 +105,10 @@
                                   1
                                   "'") ready-games)
         recently-ended (ebot/get-newly-ended-games identifier-ids)]
-    (doseq [ebot-id (filter #(not (contains? games-awaiting-close (str (int %)))) recently-ended)]
-      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str (int ebot-id))])))))
+    (doseq [ebot-id (filter #(and (contains? games-awaiting-close (str %))
+                                  (not (db/report-timer-started? %))) recently-ended)]
+      (db/set-report-timer ebot-id)
+      (await-game-status ebot-id close-game-time (get-in state [:games-awaiting-close (str ebot-id)])))))
 
 (defn start-veto
   "Creates a veto lobby state and notifies the Discord server channel that the
@@ -156,7 +162,10 @@
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str team1-name " vs " team2-name " is now ready!"
-                                             "\nsteam://connect/" ip "/" config_password
+                                             ; For some reason using steam:// links
+                                             ; will give you a "Server Full" error
+                                             ; even when it's not.
+                                             ;"\nsteam://connect/" ip "/" config_password
                                              "\n" "`connect " ip
                                              "; password " config_password ";`"))))))
 
@@ -191,11 +200,10 @@
 (defn run-stage
   "Logs into eBot and continuously imports and exports all available games
   every 30 seconds."
-  [tournament-name stage-name]
+  [tournament-id stage-name]
   (async/go
     (ebot/login)
-    (let [tournament-id (get (toornament/get-tournament tournament-name) "id")
-          stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
+    (let [stage-id (get (toornament/get-stage tournament-id stage-name) "id")]
       (swap! state assoc :tournament-id tournament-id)
       (loop []
         (println "Running")
@@ -217,10 +225,18 @@
             (ebot/assign-server server-id ebot-match-id)
             (notify-discord tournament-id team1 team2 server-id)
             (start-veto tournament-id match-id ebot-match-id server-id team1 team2)
-            (when (not (contains? @state ebot-match-id))
-              (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan)))))
+            (when (not (contains? (:games-awaiting-close @state) ebot-match-id))
+              (swap! state assoc-in [:games-awaiting-close ebot-match-id] (async/chan))
+              (cond
+                (not (db/in-reports-table? ebot-match-id))
+                (db/add-unreported ebot-match-id)
 
-                                        ;exports here
+                ;; we will reset the timer, since the game will
+                ;; still be exportable on through toornament state
+                (db/in-timer? ebot-match-id)
+                (db/set-unreported ebot-match-id)))))
+
+        ; exports here
         (export-games @state tournament-id)
         (async/<! (async/timeout 30000))
         (if (or (not (:stage-running @state))
@@ -241,14 +257,14 @@
 (defmethod handle-event "!run-stage"
   [event-type {:keys [content channel-id]}]
   (when (= channel-id discord-admin-channel-id)
-    (let [[tournament-name stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
+    (let [[tournament-id stage-name] (str/split (str/replace content #"!run-stage " "") #" ")]
       (println "Received run")
       (if (:stage-running @state)
         (dmess/create-message! (:messaging @state) channel-id
                                :content "A stage is already running.")
         (do
           (swap! state assoc :stage-running true)
-          (run-stage tournament-name stage-name))))))
+          (run-stage tournament-id stage-name))))))
 
 (defmethod handle-event "!stop-stage"
   [event-type {:keys [channel-id]}]
