@@ -20,6 +20,7 @@
 (def discord-server-channel-ids (:discord-server-channel-ids env))
 (def discord-token (:discord-token env))
 (def game-server-password (:game-server-password env))
+(def import-blacklist (:import-blacklist env))
 (def map-pool (:map-pool env))
 
 (defn gen-discord-user-map
@@ -72,7 +73,8 @@
   "Returns the matches that can and have not been imported yet."
   [tournament-id]
   (filter #(and (not (ebot/imported? tournament-id (get % "id") 1))
-                (not (db/match-delayed? (get % "id"))))
+                (not (db/match-delayed? (get % "id")))
+                (not (contains? import-blacklist (get % "id"))))
           (toornament/importable-matches tournament-id)))
 
 (defn await-game-status
@@ -159,7 +161,10 @@
       (let [channel-id (:id @(dmess/create-dm! (:messaging @state) discord-id))]
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str team1-name " vs " team2-name " is now ready!"
-                                             "\nsteam://connect/" ip "/" config_password
+                                             ; For some reason using steam:// links
+                                             ; will give you a "Server Full" error
+                                             ; even when it's not.
+                                             ;"\nsteam://connect/" ip "/" config_password
                                              "\n" "`connect " ip
                                              "; password " config_password ";`"))))))
 
