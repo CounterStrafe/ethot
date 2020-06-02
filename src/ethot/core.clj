@@ -21,6 +21,7 @@
 (def discord-token (:discord-token env))
 (def game-server-password (:game-server-password env))
 (def map-pool (:map-pool env))
+(def report-timeout (:report-timeout env))
 
 (defn gen-discord-user-map
   "Generates a map of Discord usernames to their ID's."
@@ -261,9 +262,23 @@
         match-ids (ebot/get-match-id-with-team team)
         games-awaiting-close (:games-awaiting-close @state)
         chan (some #(get games-awaiting-close (str (int %))) match-ids)]
-    ;;todo add nil case for chan
-    (async/go
-      (async/>! chan "some-data"))))
+    (if chan
+      (do
+        (async/go
+          (async/>! chan "some-data"))
+        (dmess/create-message! (:messaging @state) channel-id
+                               :content (str (format-discord-mentions [id])
+                                             " Report has been sent!"))
+        (dmess/create-message! (:messaging @state) discord-admin-channel-id
+                               :content (str "@here " username "#" disc
+                                             " has sent a report for his game!")))
+      (do
+        (dmess/create-message! (:messaging @state) channel-id
+                               :content (str (format-discord-mentions [id])
+                                             " Something went wrong! Admins have been notified"))
+        (dmess/create-message! (:messaging @state) discord-admin-channel-id
+                               :content (str "@here " username "#" disc
+                                             " A report has FAILED to be sent!"))))))
 
 (defmethod handle-event "!ban"
   [event-type {{username :username id :id disc :discriminator} :author, :keys [channel-id content]}]
@@ -346,7 +361,7 @@
                     :stage-running false
                     :discord-user-ids {}
                     :games-awaiting-close {}
-                    :close-game-time 60000}]
+                    :close-game-time report-timeout}]
     (reset! state init-state)
     (devent/message-pump! event-ch handle-event)
     (dmess/stop-connection! messaging-ch)
