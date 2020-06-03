@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   ethot:
-    image: counterstrafe/ethot
+    image: counterstrafe/ethot:0.1.0-SNAPSHOT
     restart: "no"
     environment:
       MYSQL_HOST: 'mysql'
