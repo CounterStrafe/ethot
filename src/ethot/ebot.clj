@@ -21,7 +21,8 @@
 (def db-host (:mysql-host env))
 (def db-user (:mysql-user env))
 (def db-password (:mysql-pass env))
-(def server-id-range (set (apply range (:server-id-range env))))
+(def server-id-range (:server-id-range env))
+(def server-ids (set (apply range server-id-range)))
 
 (def ds (jdbc/get-datasource
          {:dbtype "mysql"
@@ -121,13 +122,13 @@
         unavailable-servers (:id result)]
         (cond
           (nil? unavailable-servers)
-          (first (apply sorted-set (clojure.set/difference server-id-range (set unavailable-servers))))
+          (first (apply sorted-set (clojure.set/difference server-ids (set unavailable-servers))))
 
           (seq? unavailable-servers)
-          (first (apply sorted-set (clojure.set/difference server-id-range (set unavailable-servers))))
+          (first (apply sorted-set (clojure.set/difference server-ids (set unavailable-servers))))
 
           :else
-          (first (apply sorted-set (clojure.set/difference server-id-range (set (list unavailable-servers))))))))
+          (first (apply sorted-set (clojure.set/difference server-ids (set (list unavailable-servers))))))))
 
 (defn get-server-creds
   "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
