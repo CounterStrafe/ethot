@@ -292,10 +292,10 @@
       (do
         (dmess/create-message! (:messaging @state) channel-id
                                :content (str (format-discord-mentions [id])
-                                             " Something went wrong! Admins have been notified"))
+                                             " Something went wrong! Admins have been notified."))
         (dmess/create-message! (:messaging @state) discord-admin-channel-id
                                :content (str "@here " username "#" disc
-                                             " in team " team
+                                             " in team " team "."
                                              " A report has FAILED to be sent!"))))))
 
 (defmethod handle-event "!ban"
