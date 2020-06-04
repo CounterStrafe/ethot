@@ -43,7 +43,7 @@
   (jdbc/execute-one! ds [(str "update veto "
                               "set " map-name " = 1, "
                               "next_ban_id = " next-ban-id " "
-                              "where match_id = " match-id)]
+                              "where match_id = '" match-id "'")]
                      {:builder-fn rs/as-unqualified-lower-maps}))
 
 (defn end-veto

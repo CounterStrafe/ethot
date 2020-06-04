@@ -46,7 +46,11 @@
 (defn get-team-discord-usernames
   "Takes a Toornament team and returns the discord usernames in it."
   [team]
-  (map #(str/trim (get-in % ["custom_fields" "discord_username"])) (get team "lineup")))
+  (reduce #(if-let [dname (get-in %2 ["custom_fields" "discord_username"])]
+             (conj %1 (str/trim dname))
+             %1)
+          '()
+          (get team "lineup")))
 
 (defn format-discord-mentions
   "Takes a sequence of Discord ID's and retuns a string that mentions them."
