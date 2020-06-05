@@ -83,7 +83,7 @@
 
 (defn assign-server
   "Assigns the server to the match."
-  [server-id ebot-match-id ]
+  [server-id ebot-match-id]
   (let [url (str base-url "/admin.php/matchs/current")]
     (process-response (hclient/post url {:connection-manager cm
                                          :cookies (:cookies @state)
@@ -112,23 +112,15 @@
             :password db-password}
         ds (jdbc/get-datasource db)
         ; Match statuses below 13 indicate a game is either running or not started yet
-        result (jdbc/execute-one! ds ["select distinct s.id
-                                       from servers s
-                                       left join matchs m
-                                       on s.id = m.server_id
-                                       where m.status < 13
-                                       order by s.id asc"]
-                                  {:builder-fn rs/as-unqualified-lower-maps})
-        unavailable-servers (:id result)]
-        (cond
-          (nil? unavailable-servers)
-          (first (apply sorted-set (clojure.set/difference server-ids (set unavailable-servers))))
-
-          (seq? unavailable-servers)
-          (first (apply sorted-set (clojure.set/difference server-ids (set unavailable-servers))))
-
-          :else
-          (first (apply sorted-set (clojure.set/difference server-ids (set (list unavailable-servers))))))))
+        result (jdbc/execute! ds ["select distinct s.id
+                                   from servers s
+                                   left join matchs m
+                                   on s.id = m.server_id
+                                   where m.status < 13
+                                   order by s.id asc"]
+                              {:builder-fn rs/as-unqualified-lower-maps})
+        unavailable-servers (map #(:id %) result)]
+        (first (apply sorted-set (clojure.set/difference server-ids (set unavailable-servers))))))
 
 (defn get-server-creds
   "Gets the server IP and password for the match. Returns map with keys [:ip :config_password]."
