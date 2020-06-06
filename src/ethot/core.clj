@@ -91,8 +91,11 @@
     (async/alt!
       (async/timeout time-to-wait) ([x]
                                     (ebot/export-game id)
-                                    (db/set-exported id))
-      chan ([x] (db/set-reported id)))))
+                                    (db/set-exported id)
+                                    (swap! state update-in [:games-awaiting-close] dissoc (str id)))
+      chan ([x]
+            (db/set-reported id)
+            (swap! state update-in [:games-awaiting-close] dissoc (str id))))))
 
 (defn export-games
   "Will find new games that have recently ended and create a new channel that
