@@ -15,6 +15,22 @@ Discord, eBot, and Toornament credentials:
 }
 ```
 
+### Run
+```
+docker-compose up -d
+```
+
+## Settings
+All settings are managed in the `secrets.edn` file.
+`discord-admin-channel-id` (str): Discord channel ID for admin commands.
+`discord-announcement-channel-id` (str): Discord channel ID for posting game announcements.
+`discord-guild-id` (str): ID of the Discord server.
+`discord-server-channel-ids` (vec[str]): Discord channel ID's for each server. Each channel ID gets mapped to the eBot server ID of it's index + 1. For example, the 0th channel ID in this vector gets mapped to the eBot server ID #1.
+
+## Commands
+### Admin Commands
+- **!run-stage** *tournament-id stage-name*
+
 ## License
 
 Copyright © 2020 FIXME
