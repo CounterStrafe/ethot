@@ -22,14 +22,30 @@ docker-compose up -d
 
 ## Settings
 All settings are managed in the `secrets.edn` file.
-
-`discord-admin-channel-id` (str): Discord channel ID for admin commands.
-
-`discord-announcement-channel-id` (str): Discord channel ID for posting game announcements.
-
-`discord-guild-id` (str): ID of the Discord server.
-
-`discord-server-channel-ids` (vec[str]): Discord channel ID's for each server. Each channel ID gets mapped to the eBot server ID of it's index + 1. For example, the 0th channel ID in this vector gets mapped to the eBot server ID #1.
+```clojure
+{
+  ; Discord channel ID for admin commands.
+  :discord-admin-channel-id ""
+  ; Discord channel ID for posting game announcements.
+  :discord-announcement-channel-id ""
+  ; ID of the Discord server.
+  :discord-guild-id ""
+  ; Discord channel ID's for each server. Each channel ID gets mapped to the eBot server ID of it's index + 1. For example, the 0th channel ID in this vector gets mapped to the eBot server ID #1.
+  :discord-server-channel-ids [""]
+  :discord-test-user-ids [""]
+  :discord-token ""
+  :ebot-admin-user ""
+  :ebot-admin-pass ""
+  :ebot-base-url ""
+  :game-server-password
+  :import-blacklist #{""}
+  :map-pool ["de_inferno" "de_overpass" "de_train" "de_shortnuke" "de_vertigo"]
+  :server-id-range [1 17]
+  :toornament-api-key ""
+  :toornament-client-id ""
+  :toornament-client-secret ""
+}
+```
 
 ## Commands
 ### Admin Commands
