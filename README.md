@@ -24,25 +24,37 @@ docker-compose up -d
 All settings are managed in the `secrets.edn` file.
 ```clojure
 {
-  ; Discord channel ID for admin commands.
+  ; Discord channel ID for admin commands
   :discord-admin-channel-id ""
-  ; Discord channel ID for posting game announcements.
+  ; Discord channel ID for posting game announcements
   :discord-announcement-channel-id ""
-  ; ID of the Discord server.
+  ; ID of the Discord server
   :discord-guild-id ""
-  ; Discord channel ID's for each server. Each channel ID gets mapped to the eBot server ID of it's index + 1. For example, the 0th channel ID in this vector gets mapped to the eBot server ID #1.
+  ; Discord channel ID's for each server. Each channel ID gets mapped to the eBot server ID of it's index + 1.
+  ; For example, the 0th channel ID in this vector gets mapped to the eBot server ID #1.
   :discord-server-channel-ids [""]
-  :discord-test-user-ids [""]
+  ; Discord bot token
   :discord-token ""
+  ; eBot admin username
   :ebot-admin-user ""
+  ; eBot admin password
   :ebot-admin-pass ""
+  ; eBot base URL
   :ebot-base-url ""
+  ; CSGO server password to use for all servers
   :game-server-password
+  ; Toornament match ID's not to be imported
   :import-blacklist #{""}
+  ; CSGO map pool
   :map-pool ["de_inferno" "de_overpass" "de_train" "de_shortnuke" "de_vertigo"]
+  ; eBot server ID range. ethot will user available servers in ascending numerical order.
+  ; Currrently the number of available servers needs to be equal to or greater than the number of games that can be played at once.
   :server-id-range [1 17]
+  ; Toornament API key
   :toornament-api-key ""
+  ; Toornament client ID
   :toornament-client-id ""
+  ; Toornament client secret
   :toornament-client-secret ""
 }
 ```
