@@ -67,7 +67,7 @@ All settings are managed in the `secrets.edn` file.
 - **!resume** *match-id* Resumes the match.
 
 ### Player Commands
-- **!report** Reports a cheater in the current match. The notifies the admins and delays the match export until manually resumed.
+- **!report** Reports a cheater in the current match. Tise notifies the admins and delays the match export until manually resumed.
 - **!ban** *map-name* Bans a map in the veto lobby.
 
 ## License
